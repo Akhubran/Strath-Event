@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>StrathEvents — Sign in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root,[data-theme="light"]{--paper:#EDE7DA;--card:#FBF9F4;--fill:#F1EBDD;--fill2:#E4DDCD;--line:#E2DBCB;--ink:#17150F;--ink2:#46423A;--muted:#6c6759}
+[data-theme="dark"]{--paper:#141310;--card:#211E18;--fill:#2A2620;--fill2:#2A2620;--line:#36312A;--ink:#F4F0E7;--ink2:#C7C1B3;--muted:#A29C8E}
+body{font-family:'Hanken Grotesk',sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased}
+button,input{font-family:'Hanken Grotesk',sans-serif}
+::selection{background:#D8F24A;color:#17150F}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+.auth-wrap{min-height:100vh;display:grid;grid-template-columns:1fr 1fr}
+.auth-left{background:#17150F;color:#F3EFE6;padding:44px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.auth-right{display:flex;align-items:center;justify-content:center;padding:44px}
+.field-input{width:100%;padding:12px 15px;border:1.5px solid var(--line);border-radius:11px;font-size:14px;background:var(--card);color:var(--ink);outline:none;transition:border-color .15s}
+.field-input:focus{border-color:#2348FF}
+.field-input.err{border-color:#FF4D2E}
+.err-msg{font-size:12px;color:#FF4D2E;margin-top:4px;display:none}
+.err-banner{background:#FEE2E2;border:1px solid #FECACA;border-radius:10px;padding:11px 14px;font-size:13px;font-weight:600;color:#DC2626;margin-bottom:14px;display:none;animation:fadein .2s}
+.theme-toggle{position:fixed;bottom:20px;left:20px;z-index:300;width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:18px;cursor:pointer;box-shadow:0 12px 28px -12px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center}
+@media(max-width:720px){
+  .auth-wrap{grid-template-columns:1fr}
+  .auth-left{display:none}
+  .auth-right{align-items:flex-start;padding-top:50px}
+}
+</style>
+</head>
+<body>
+<div class="auth-wrap">
+  <!-- LEFT — branding panel (faithful to design file) -->
+  <div class="auth-left">
+    <div onclick="window.location.href='/'" style="display:flex;align-items:center;gap:10px;font-family:'Bricolage Grotesque';font-weight:800;font-size:21px;cursor:pointer;position:relative;z-index:2">
+      <span style="width:31px;height:31px;border-radius:9px;background:#D8F24A;color:#17150F;display:flex;align-items:center;justify-content:center;font-size:16px">✦</span>
+      StrathEvents
+    </div>
+    <div style="position:relative;z-index:2">
+      <h2 style="font-family:'Bricolage Grotesque';font-weight:800;font-size:46px;line-height:1;letter-spacing:-1.5px;margin-bottom:18px">Everything<br/>happening on<br/>campus, sorted.</h2>
+      <p style="font-size:16px;color:#b8b2a4;max-width:340px">Sign in to register for events, pay with M-Pesa and keep all your QR tickets in one place.</p>
+    </div>
+    <div style="position:relative;z-index:2;font-family:'Space Mono',monospace;font-size:12px;color:#7a7468">STRATHMORE UNIVERSITY</div>
+    <!-- Decorative cards -->
+    <div style="position:absolute;top:90px;right:-50px;width:220px;height:290px;transform:rotate(10deg);background:#2348FF;border-radius:20px;opacity:.5"></div>
+    <div style="position:absolute;top:150px;right:30px;width:220px;height:290px;transform:rotate(-6deg);background:#FF4D2E;border-radius:20px;opacity:.35"></div>
+  </div>
+
+  <!-- RIGHT — form panel -->
+  <div class="auth-right">
+    <div style="width:100%;max-width:400px">
+      <h1 id="authTitle" style="font-family:'Bricolage Grotesque';font-weight:800;font-size:34px;letter-spacing:-1px;margin-bottom:6px">Welcome back</h1>
+      <p id="authSub" style="font-size:15px;color:var(--muted);margin-bottom:26px">Sign in to pick up where you left off.</p>
+
+      <!-- Tab switcher -->
+      <div style="display:flex;gap:6px;background:var(--fill2);padding:5px;border-radius:13px;margin-bottom:24px">
+        <button id="tabLogin"  onclick="setTab('login')"  style="flex:1;border:none;padding:11px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;background:var(--card);color:var(--ink)">Log in</button>
+        <button id="tabSignup" onclick="setTab('signup')" style="flex:1;border:none;padding:11px;border-radius:9px;font-size:14px;font-weight:700;cursor:pointer;background:transparent;color:var(--muted)">Sign up</button>
+      </div>
+
+      <div id="errBanner" class="err-banner"></div>
+
+      <!-- LOGIN -->
+      <div id="formLogin">
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin-bottom:7px">University email</label>
+          <input id="loginEmail" type="email" placeholder="jdoe@strathmore.edu" class="field-input" autocomplete="email">
+        </div>
+        <div style="margin-bottom:20px">
+          <label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin-bottom:7px">Password</label>
+          <div style="position:relative">
+            <input id="loginPw" type="password" placeholder="••••••••" class="field-input" autocomplete="current-password" style="padding-right:56px">
+            <button type="button" onclick="togglePw('loginPw',this)" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer">Show</button>
+          </div>
+        </div>
+        <button id="btnLogin" onclick="handleLogin()" style="width:100%;background:#2348FF;border:none;color:#fff;font-size:16px;font-weight:700;padding:15px;border-radius:12px;cursor:pointer;margin-bottom:16px" onmouseover="this.style.background='#1B39CC'" onmouseout="this.style.background='#2348FF'">Log in</button>
+        <div style="text-align:center"><span onclick="window.location.href='/'" style="font-size:14px;font-weight:600;color:var(--muted);cursor:pointer" onmouseover="this.style.color='#2348FF'" onmouseout="this.style.color='var(--muted)'">Just looking? Explore events as a guest →</span></div>
+      </div>
+
+      <!-- SIGNUP -->
+      <div id="formSignup" style="display:none">
+        <!-- Feature #14: name + admission number both required -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div>
+            <label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin-bottom:7px">Full name <span style="color:#FF4D2E">*</span></label>
+            <input id="regName" placeholder="Jane Doe" class="field-input">
+          </div>
+          <div>
+            <label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin-bottom:7px">Admission no. <span style="color:#FF4D2E">*</span></label>
+            <input id="regAdm" placeholder="189436" class="field-input">
+          </div>
+        </div>
+        <div style="margin-bottom:14px">
+          <!-- Feature #14: @strathmore.edu only -->
+          <label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin-bottom:7px">University email <span style="color:#FF4D2E">*</span></label>
+          <input id="regEmail" type="email" placeholder="jdoe@strathmore.edu" class="field-input" autocomplete="email">
+          <div style="font-size:12px;color:var(--muted);margin-top:4px">Must end in @strathmore.edu</div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin-bottom:7px">Phone number</label>
+          <input id="regPhone" type="tel" placeholder="0712 345 678" class="field-input">
+        </div>
+        <div style="margin-bottom:20px">
+          <label style="display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin-bottom:7px">Password <span style="color:#FF4D2E">*</span></label>
+          <div style="position:relative">
+            <input id="regPw" type="password" placeholder="Min. 8 characters" class="field-input" autocomplete="new-password" style="padding-right:56px">
+            <button type="button" onclick="togglePw('regPw',this)" style="position:absolute;right:14px;top:50%;transform:translateY(-50%);background:none;border:none;font-size:12.5px;font-weight:700;color:var(--muted);cursor:pointer">Show</button>
+          </div>
+        </div>
+        <button id="btnSignup" onclick="handleSignup()" style="width:100%;background:#2348FF;border:none;color:#fff;font-size:16px;font-weight:700;padding:15px;border-radius:12px;cursor:pointer;margin-bottom:16px" onmouseover="this.style.background='#1B39CC'" onmouseout="this.style.background='#2348FF'">Create account</button>
+        <div style="text-align:center"><span onclick="window.location.href='/'" style="font-size:14px;font-weight:600;color:var(--muted);cursor:pointer" onmouseover="this.style.color='#2348FF'" onmouseout="this.style.color='var(--muted)'">Just looking? Explore events as a guest →</span></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<button class="theme-toggle" id="themeBtn">☾</button>
+
+<script>
+const API = window.location.origin + '/api';
+let currentTab = 'login';
+
+/* Theme */
+let theme = localStorage.getItem('se_theme')||'light';
+function applyTheme(t){theme=t;document.documentElement.setAttribute('data-theme',t);localStorage.setItem('se_theme',t);document.getElementById('themeBtn').textContent=t==='dark'?'☀':'☾';}
+applyTheme(theme);
+document.getElementById('themeBtn').onclick=()=>applyTheme(theme==='dark'?'light':'dark');
+
+/* Redirect already logged-in users */
+try {
+  const u=JSON.parse(localStorage.getItem('se_user')||'null');
+  const tok=localStorage.getItem('se_token');
+  if(u&&tok){const map={admin:'admin/',club_admin:'club/',student:'student/'};if(map[u.role])window.location.href=map[u.role];}
+} catch(e){}
+
+/* Handle ?tab=signup */
+if(new URLSearchParams(window.location.search).get('tab')==='signup') setTab('signup');
+
+function setTab(t){
+  currentTab=t;
+  const isLogin=t==='login';
+  document.getElementById('formLogin').style.display  = isLogin?'block':'none';
+  document.getElementById('formSignup').style.display = isLogin?'none':'block';
+  document.getElementById('tabLogin').style.background  = isLogin?'var(--card)':'transparent';
+  document.getElementById('tabLogin').style.color       = isLogin?'var(--ink)':'var(--muted)';
+  document.getElementById('tabSignup').style.background = isLogin?'transparent':'var(--card)';
+  document.getElementById('tabSignup').style.color      = isLogin?'var(--muted)':'var(--ink)';
+  document.getElementById('authTitle').textContent = isLogin?'Welcome back':'Create your account';
+  document.getElementById('authSub').textContent   = isLogin?'Sign in to pick up where you left off.':'Join the campus events network — it takes a minute.';
+  hideErr();
+}
+
+function togglePw(inputId,btn){const i=document.getElementById(inputId);i.type=i.type==='password'?'text':'password';btn.textContent=i.type==='password'?'Show':'Hide';}
+
+function showErr(msg){const el=document.getElementById('errBanner');el.textContent=msg;el.style.display='block';}
+function hideErr(){document.getElementById('errBanner').style.display='none';}
+
+function setBusy(btnId,busy,label){const b=document.getElementById(btnId);b.disabled=busy;b.textContent=busy?'Please wait…':label;}
+
+async function handleLogin(){
+  hideErr();
+  const email=document.getElementById('loginEmail').value.trim();
+  const pw=document.getElementById('loginPw').value;
+  if(!email||!pw){showErr('Enter your email and password.');return;}
+  setBusy('btnLogin',true,'Log in');
+  try{
+    const r=await fetch(API+'/auth/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pw})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||d.message||'Login failed');
+    localStorage.setItem('se_token',d.token);
+    localStorage.setItem('se_user',JSON.stringify(d.user));
+    const map={admin:'admin/',club_admin:'club/',student:'student/'};
+    window.location.href=map[d.user.role]||'student/';
+  }catch(e){showErr(e.message);}
+  finally{setBusy('btnLogin',false,'Log in');}
+}
+
+async function handleSignup(){
+  hideErr();
+  const full_name=document.getElementById('regName').value.trim();
+  const admission_number=document.getElementById('regAdm').value.trim();
+  const email=document.getElementById('regEmail').value.trim();
+  const phone=document.getElementById('regPhone').value.trim();
+  const pw=document.getElementById('regPw').value;
+  if(!full_name||!admission_number||!email||!pw){showErr('Full name, admission number, email and password are all required.');return;}
+  /* Feature #14: strict @strathmore.edu validation */
+  if(!email.toLowerCase().endsWith('@strathmore.edu')){showErr('Only @strathmore.edu email addresses are accepted.');return;}
+  if(pw.length<8){showErr('Password must be at least 8 characters.');return;}
+  setBusy('btnSignup',true,'Create account');
+  try{
+    const r=await fetch(API+'/auth/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({full_name,admission_number,email,phone_number:phone||null,password:pw})});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||d.message||'Registration failed');
+    localStorage.setItem('se_token',d.token);
+    localStorage.setItem('se_user',JSON.stringify(d.user));
+    window.location.href='student/';
+  }catch(e){showErr(e.message);}
+  finally{setBusy('btnSignup',false,'Create account');}
+}
+
+/* Enter key */
+document.addEventListener('keydown',e=>{
+  if(e.key!=='Enter')return;
+  if(currentTab==='login')handleLogin();else handleSignup();
+});
+</script>
+</body>
+</html>

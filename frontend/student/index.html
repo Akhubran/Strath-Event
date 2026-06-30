@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>StrathEvents — Student Portal</title>
+<script>
+/* Global safety net — catches ANY uncaught error or unhandled promise rejection,
+   anywhere in the page, including ones the inline try/catch can't reach
+   (async callbacks, event listener bodies, etc). Shows a visible banner
+   instead of leaving the page silently broken. */
+(function () {
+  let shown = false;
+  function showFatal(err) {
+    if (shown) return; shown = true;
+    var msg = (err && err.stack) ? err.stack : (err && err.message) ? err.message : String(err);
+    function render() {
+      document.body.insertAdjacentHTML('afterbegin',
+        '<div style="position:fixed;inset:0;z-index:99999;background:#FBE3DD;display:flex;align-items:center;justify-content:center;padding:30px;font-family:sans-serif">' +
+          '<div style="max-width:560px;background:#fff;border-radius:18px;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,.25)">' +
+            '<div style="font-size:32px;margin-bottom:10px">\u26A0\uFE0F</div>' +
+            '<div style="font-weight:800;font-size:22px;color:#C0392B;margin-bottom:10px">Page failed to load</div>' +
+            '<p style="font-size:14px;color:#444;line-height:1.6;margin-bottom:14px">A script error stopped this page from working. Please screenshot the message below and send it back so it can be fixed.</p>' +
+            '<pre style="background:#FFF5F2;border:1px solid #F4C6BB;border-radius:10px;padding:14px;font-size:12.5px;color:#C0392B;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow:auto">' + msg.replace(/</g,'&lt;') + '</pre>' +
+            '<button onclick="location.reload()" style="margin-top:16px;background:#17150F;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-weight:700;cursor:pointer">Reload page</button>' +
+          '</div>' +
+        '</div>');
+    }
+    if (document.body) render();
+    else document.addEventListener('DOMContentLoaded', render);
+  }
+  window.addEventListener('error', function (e) { showFatal(e.error || e.message); });
+  window.addEventListener('unhandledrejection', function (e) { showFatal(e.reason); });
+})();
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=Hanken+Grotesk:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root,[data-theme="light"]{--paper:#EDE7DA;--card:#FBF9F4;--fill:#F1EBDD;--fill2:#E4DDCD;--line:#E2DBCB;--ink:#17150F;--ink2:#46423A;--muted:#6c6759;--header:rgba(237,231,218,.9)}
+[data-theme="dark"]{--paper:#141310;--card:#211E18;--fill:#2A2620;--fill2:#2A2620;--line:#36312A;--ink:#F4F0E7;--ink2:#C7C1B3;--muted:#A29C8E;--header:rgba(20,19,16,.92)}
+body{font-family:'Hanken Grotesk',sans-serif;background:var(--paper);color:var(--ink);-webkit-font-smoothing:antialiased;transition:background .25s ease,color .25s ease}
+button,input,select,textarea{font-family:'Hanken Grotesk',sans-serif}
+::selection{background:#D8F24A;color:#17150F}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@keyframes pop{from{opacity:0;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes toastin{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:#cfc7b5;border-radius:10px;border:3px solid var(--paper)}
+::-webkit-scrollbar-track{background:transparent}
+
+/* Event cards */
+.ev-card{cursor:pointer;background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;transition:transform .16s,box-shadow .16s}
+.ev-card:hover{transform:translateY(-4px);box-shadow:0 22px 44px -22px rgba(20,18,12,.4)}
+.ev-banner{height:148px;padding:16px 17px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden}
+.ev-banner-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.ev-banner-overlay{position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.1),rgba(0,0,0,.55))}
+.ev-banner-content{position:relative;z-index:1;display:flex;flex-direction:column;height:100%;justify-content:space-between}
+.ev-body{padding:15px 17px;display:flex;flex-direction:column;gap:9px;flex:1}
+
+/* Dark ticket */
+.ticket-wrap{display:flex;background:#17150F;color:#F3EFE6;border-radius:20px;overflow:hidden;box-shadow:0 18px 44px -22px rgba(20,18,12,.5)}
+.ticket-left{flex:1;padding:26px 28px;display:flex;flex-direction:column;justify-content:space-between}
+.ticket-divider{width:1px;border-left:2px dashed rgba(255,255,255,.18);position:relative;flex-shrink:0}
+.ticket-divider::before,.ticket-divider::after{content:'';position:absolute;left:-11px;width:22px;height:22px;border-radius:50%;background:var(--paper)}
+.ticket-divider::before{top:-11px}
+.ticket-divider::after{bottom:-11px}
+.ticket-right{width:200px;padding:26px 22px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;flex-shrink:0}
+.ticket-qr-box{width:138px;height:138px;background:#fff;padding:10px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+
+/* Club cards */
+.club-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;display:flex;flex-direction:column;gap:14px}
+
+/* Chips */
+.chip{padding:8px 16px;border-radius:999px;font-size:13.5px;font-weight:700;cursor:pointer;transition:all .14s;border:1.5px solid var(--line);background:var(--card);color:var(--ink2)}
+.chip.active{background:#17150F;color:#fff;border-color:#17150F}
+
+/* Modals */
+.modal-overlay{position:fixed;inset:0;background:rgba(20,18,12,.55);backdrop-filter:blur(4px);z-index:60;display:flex;align-items:center;justify-content:center;padding:24px;animation:fadein .18s ease}
+.modal-box{background:var(--card);border-radius:24px;width:100%;max-height:90vh;overflow-y:auto;animation:pop .22s ease}
+
+/* Toast */
+.toast{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:13px 18px;box-shadow:0 16px 36px -16px rgba(20,18,12,.4);font-size:14px;font-weight:600;min-width:260px;max-width:340px;animation:toastin .25s ease}
+
+/* Forms */
+.field-label{display:block;font-size:12.5px;font-weight:700;color:var(--ink2);margin-bottom:7px}
+.field-input{width:100%;padding:12px 15px;border:1.5px solid var(--line);border-radius:11px;font-size:14px;background:var(--card);color:var(--ink);outline:none;transition:border-color .15s}
+.field-input:focus{border-color:#2348FF}
+
+/* Upload zone */
+.upload-zone{border:2px dashed var(--line);border-radius:14px;padding:26px 20px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+.upload-zone:hover{border-color:#2348FF}
+.upload-zone.has-file{border-style:solid;border-color:#2348FF}
+
+/* Star rating */
+.star{font-size:28px;cursor:pointer;transition:color .1s;color:var(--line)}
+.star.on{color:#E0930A}
+
+/* Profile avatar upload */
+.avatar-upload{position:relative;display:inline-block;cursor:pointer}
+.avatar-upload input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.avatar-overlay{position:absolute;inset:0;border-radius:50%;background:rgba(20,18,12,.5);display:flex;align-items:center;justify-content:center;font-size:18px;opacity:0;transition:opacity .15s}
+.avatar-upload:hover .avatar-overlay{opacity:1}
+
+/* Mobile */
+@media(max-width:768px){
+  .app-header-inner{padding:12px 16px}
+  .app-nav{display:none}
+  .mobile-nav{display:flex!important}
+  .app-main{padding:20px 16px 80px}
+  .grid-3{grid-template-columns:1fr!important}
+  .grid-4{grid-template-columns:repeat(2,1fr)!important}
+  .modal-overlay{padding:0;align-items:flex-end}
+  .modal-box{border-radius:24px 24px 0 0;max-height:96vh}
+  .ticket-wrap{flex-direction:column}
+  .ticket-divider{display:none}
+  .ticket-right{width:100%;border-top:2px dashed rgba(255,255,255,.18)}
+}
+@media(max-width:480px){
+  .grid-4{grid-template-columns:1fr!important}
+}
+.mobile-nav{display:none;position:fixed;bottom:0;left:0;right:0;z-index:50;background:var(--card);border-top:1px solid var(--line)}
+.mob-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:12px 4px 14px;background:transparent;border:none;cursor:pointer;font-size:11px;font-weight:700;color:var(--muted);transition:color .15s}
+.mob-btn.active{color:#2348FF}
+
+.theme-toggle{position:fixed;bottom:20px;left:20px;z-index:300;width:46px;height:46px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:18px;cursor:pointer;box-shadow:0 12px 28px -12px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;transition:background .25s,color .25s}
+</style>
+</head>
+<body>
+<div id="app" style="min-height:100vh;background:var(--paper);color:var(--ink)">
+
+<!-- ═══ HEADER ═══ -->
+<header style="position:sticky;top:0;z-index:40;background:var(--header);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)">
+  <div class="app-header-inner" style="max-width:1180px;margin:0 auto;padding:12px 28px;display:flex;align-items:center;gap:24px">
+    <div onclick="window.location.href='../public/'" style="display:flex;align-items:center;gap:9px;font-family:'Bricolage Grotesque';font-weight:800;font-size:19px;letter-spacing:-.5px;cursor:pointer">
+      <span style="width:29px;height:29px;border-radius:8px;background:#17150F;color:#D8F24A;display:flex;align-items:center;justify-content:center;font-size:15px">✦</span> StrathEvents
+    </div>
+    <nav class="app-nav" style="display:flex;align-items:center;gap:4px;margin-left:8px">
+      <button onclick="setPage('discover',this)" data-page="discover" class="nav-btn" style="background:transparent;border:none;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;color:var(--ink);border-bottom:2.5px solid #2348FF;border-radius:0">Discover</button>
+      <button onclick="setPage('tickets',this)"  data-page="tickets"  class="nav-btn" style="background:transparent;border:none;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;color:var(--muted);border-bottom:2.5px solid transparent;border-radius:0">My Tickets</button>
+      <button onclick="setPage('history',this)"  data-page="history"  class="nav-btn" style="background:transparent;border:none;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;color:var(--muted);border-bottom:2.5px solid transparent;border-radius:0">History</button>
+      <button onclick="setPage('clubs',this)"    data-page="clubs"    class="nav-btn" style="background:transparent;border:none;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;color:var(--muted);border-bottom:2.5px solid transparent;border-radius:0">Clubs &amp; Sports</button>
+      <button onclick="setPage('settings',this)" data-page="settings" class="nav-btn" style="background:transparent;border:none;padding:8px 14px;font-size:15px;font-weight:700;cursor:pointer;color:var(--muted);border-bottom:2.5px solid transparent;border-radius:0">Settings</button>
+    </nav>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:12px;position:relative">
+      <!-- Notifications -->
+      <div style="position:relative">
+        <button onclick="toggleNotif()" style="width:40px;height:40px;border-radius:11px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;position:relative">🔔
+          <span id="notifBadge" style="display:none;position:absolute;top:8px;right:9px;width:8px;height:8px;border-radius:50%;background:#FF4D2E;border:2px solid var(--card)"></span>
+        </button>
+        <div id="notifPanel" style="display:none;position:absolute;top:50px;right:0;width:320px;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 24px 50px -18px rgba(20,18,12,.35);overflow:hidden;z-index:50;animation:pop .18s ease">
+          <div style="padding:15px 17px;border-bottom:1px solid var(--line);font-family:'Bricolage Grotesque';font-weight:700;font-size:15px">Notifications</div>
+          <div id="notifList"></div>
+        </div>
+      </div>
+      <div id="userAvatar" style="width:40px;height:40px;border-radius:50%;background:#2348FF;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:15px;overflow:hidden;cursor:pointer" onclick="setPage('settings',null)"></div>
+      <button onclick="doLogout()" style="background:transparent;border:none;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer" onmouseover="this.style.color='#FF4D2E'" onmouseout="this.style.color='var(--muted)'">Log out</button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ PAGES ═══ -->
+<div id="pages">
+
+<!-- DISCOVER -->
+<main id="pgDiscover" class="app-main" style="max-width:1180px;margin:0 auto;padding:34px 28px 70px">
+  <div style="display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:26px">
+    <div>
+      <h1 style="font-family:'Bricolage Grotesque';font-weight:800;font-size:38px;letter-spacing:-1.5px;margin-bottom:6px">Hey <span id="greetName">there</span>, what's on? 👋</h1>
+      <p style="font-size:16px;color:var(--muted)" id="resultLabel">Upcoming events across every club and faculty.</p>
+    </div>
+    <div style="display:flex;align-items:center;gap:9px;background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:0 14px;height:46px;width:280px">
+      <span style="font-size:15px;color:var(--muted)">🔍</span>
+      <input id="searchInput" oninput="filterAndRender()" placeholder="Search events, clubs…" style="border:none;background:transparent;outline:none;font-size:14.5px;width:100%;color:var(--ink)"/>
+    </div>
+  </div>
+  <div id="chipRow" style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:28px"></div>
+  <div id="evGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px" class="grid-3"></div>
+  <div id="evEmpty" style="display:none;text-align:center;padding:80px 20px">
+    <div style="font-size:46px;margin-bottom:14px">🔍</div>
+    <h3 style="font-family:'Bricolage Grotesque';font-weight:700;font-size:22px;margin-bottom:8px">Nothing here yet</h3>
+    <p style="font-size:15px;color:var(--muted)">Try a different category or clear your search.</p>
+  </div>
+</main>
+
+<!-- MY TICKETS -->
+<main id="pgTickets" style="display:none;max-width:920px;margin:0 auto;padding:34px 28px 70px" class="app-main">
+  <h1 style="font-family:'Bricolage Grotesque';font-weight:800;font-size:38px;letter-spacing:-1.5px;margin-bottom:6px">My Tickets</h1>
+  <p style="font-size:16px;color:var(--muted);margin-bottom:28px">Flash the QR at the door. No paper, no queue.</p>
+  <div id="ticketList" style="display:flex;flex-direction:column;gap:20px"></div>
+  <div id="ticketEmpty" style="display:none;text-align:center;padding:70px 20px;background:var(--card);border:1px dashed var(--line);border-radius:20px">
+    <div style="font-size:46px;margin-bottom:14px">🎟️</div>
+    <h3 style="font-family:'Bricolage Grotesque';font-weight:700;font-size:22px;margin-bottom:8px">No tickets yet</h3>
+    <p style="font-size:15px;color:var(--muted);margin-bottom:20px">Register for an event and your QR ticket shows up here.</p>
+    <button onclick="setPage('discover',null)" style="background:#2348FF;border:none;color:#fff;font-size:15px;font-weight:700;padding:13px 24px;border-radius:12px;cursor:pointer">Browse events →</button>
+  </div>
+</main>
+
+<!-- HISTORY -->
+<main id="pgHistory" style="display:none;max-width:1180px;margin:0 auto;padding:34px 28px 70px" class="app-main">
+  <h1 style="font-family:'Bricolage Grotesque';font-weight:800;font-size:38px;letter-spacing:-1.5px;margin-bottom:6px">Event History</h1>
+  <p style="font-size:16px;color:var(--muted);margin-bottom:28px">Your full registration history — upcoming and past.</p>
+  <div id="historyUpcoming">
+    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:16px">Upcoming</div>
+    <div id="histUpList" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:36px" class="grid-3"></div>
+  </div>
+  <div id="historyPast" style="padding-top:32px;border-top:1px solid var(--line)">
+    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:16px">Past Events</div>
+    <div id="histPastList" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px" class="grid-3"></div>
+  </div>
+  <div id="histEmpty" style="display:none;text-align:center;padding:80px 20px">
+    <div style="font-size:46px;margin-bottom:14px">📜</div>
+    <h3 style="font-family:'Bricolage Grotesque';font-weight:700;font-size:22px;margin-bottom:8px">No history yet</h3>
+    <p style="font-size:15px;color:var(--muted)">Register for events and your history will appear here.</p>
+  </div>
+</main>
+
+<!-- CLUBS & SPORTS -->
+<main id="pgClubs" style="display:none;max-width:1180px;margin:0 auto;padding:34px 28px 70px" class="app-main">
+  <h1 style="font-family:'Bricolage Grotesque';font-weight:800;font-size:38px;letter-spacing:-1.5px;margin-bottom:6px">Clubs &amp; Sports</h1>
+  <p style="font-size:16px;color:var(--muted);margin-bottom:22px">Join a club for member pricing and first dibs on tickets.</p>
+  <!-- Type filter -->
+  <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:14px" id="clubTypeChips"></div>
+  <!-- Category filter -->
+  <div style="display:flex;gap:9px;flex-wrap:wrap;margin-bottom:28px" id="clubCatChips"></div>
+  <div id="clubGrid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:20px" class="grid-3"></div>
+  <div id="clubEmpty" style="display:none;text-align:center;padding:80px 20px">
+    <div style="font-size:46px;margin-bottom:14px">🏛️</div>
+    <h3 style="font-family:'Bricolage Grotesque';font-weight:700;font-size:22px;margin-bottom:8px">No clubs found</h3>
+    <p style="font-size:15px;color:var(--muted)">Try a different filter.</p>
+  </div>
+</main>
+
+<!-- SETTINGS -->
+<main id="pgSettings" style="display:none;max-width:760px;margin:0 auto;padding:34px 28px 70px" class="app-main">
+  <h1 style="font-family:'Bricolage Grotesque';font-weight:800;font-size:38px;letter-spacing:-1.5px;margin-bottom:6px">Settings</h1>
+  <p style="font-size:16px;color:var(--muted);margin-bottom:28px">Manage your profile and account.</p>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:22px" class="grid-2" id="settingsGrid">
+    <!-- Profile card -->
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden">
+      <div style="padding:18px 22px;border-bottom:1px solid var(--line);font-family:'Bricolage Grotesque';font-weight:700;font-size:17px">Profile</div>
+      <div style="padding:22px">
+        <div style="display:flex;align-items:center;gap:16px;margin-bottom:22px">
+          <div class="avatar-upload" title="Click to change photo" id="avatarUploadWrap">
+            <div id="settingsAvatar" style="width:72px;height:72px;border-radius:50%;background:#2348FF;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:24px;overflow:hidden"></div>
+            <div class="avatar-overlay">📷</div>
+            <input type="file" accept="image/*" onchange="handleAvatarUpload(event)">
+          </div>
+          <div>
+            <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:19px" id="settingsName"></div>
+            <div style="font-size:13px;color:var(--muted);margin-top:3px" id="settingsEmail"></div>
+            <div style="font-size:12px;font-family:'Space Mono',monospace;color:var(--muted);margin-top:2px" id="settingsAdm"></div>
+          </div>
+        </div>
+        <p style="font-size:12.5px;color:var(--muted);line-height:1.55">Click your photo above to upload a profile picture (optional, max 1MB).</p>
+      </div>
+    </div>
+    <!-- Change password -->
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden">
+      <div style="padding:18px 22px;border-bottom:1px solid var(--line);font-family:'Bricolage Grotesque';font-weight:700;font-size:17px">Change Password</div>
+      <div style="padding:22px;display:flex;flex-direction:column;gap:14px">
+        <div><label class="field-label">Current password</label><input type="password" id="pwCurrent" class="field-input" placeholder="••••••••"></div>
+        <div><label class="field-label">New password</label><input type="password" id="pwNew" class="field-input" placeholder="Min. 8 characters"></div>
+        <div><label class="field-label">Confirm new password</label><input type="password" id="pwConfirm" class="field-input" placeholder="Repeat new password"></div>
+        <button onclick="changePassword()" style="background:#2348FF;border:none;color:#fff;font-size:15px;font-weight:700;padding:13px;border-radius:12px;cursor:pointer">Update password</button>
+      </div>
+    </div>
+  </div>
+  <div style="margin-top:20px">
+    <button onclick="doLogout()" style="background:transparent;border:1.5px solid #E7C3BA;color:#C0392B;font-size:14px;font-weight:700;padding:11px 20px;border-radius:11px;cursor:pointer">Sign out</button>
+  </div>
+</main>
+
+</div><!-- /pages -->
+
+<!-- ═══ MOBILE BOTTOM NAV ═══ -->
+<nav class="mobile-nav">
+  <button class="mob-btn active" id="mDiscover" onclick="setPage('discover',null)"><span style="font-size:26px">🔍</span>Discover</button>
+  <button class="mob-btn" id="mTickets"  onclick="setPage('tickets',null)"><span style="font-size:26px">🎟️</span>Tickets</button>
+  <button class="mob-btn" id="mHistory"  onclick="setPage('history',null)"><span style="font-size:26px">📜</span>History</button>
+  <button class="mob-btn" id="mClubs"    onclick="setPage('clubs',null)"><span style="font-size:26px">🏛️</span>Clubs</button>
+  <button class="mob-btn" id="mSettings" onclick="setPage('settings',null)"><span style="font-size:26px">⚙️</span>Settings</button>
+</nav>
+
+<!-- ═══ EVENT DETAIL MODAL ═══ -->
+<div id="modalDetail" class="modal-overlay" style="display:none" onclick="closeModal('modalDetail')">
+  <div class="modal-box" style="max-width:540px" onclick="event.stopPropagation()">
+    <div id="detailBanner" style="height:172px;padding:22px 26px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;border-radius:24px 24px 0 0">
+      <img id="detailBannerImg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none">
+      <div id="detailBannerOverlay" style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.1),rgba(0,0,0,.55));display:none"></div>
+      <div style="position:relative;z-index:1;display:flex;justify-content:space-between;align-items:flex-start">
+        <span id="detailCat" style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;color:rgba(255,255,255,.9);text-transform:uppercase"></span>
+        <button onclick="closeModal('modalDetail')" style="width:34px;height:34px;border-radius:10px;border:none;background:rgba(20,18,12,.35);color:#fff;font-size:16px;cursor:pointer">✕</button>
+      </div>
+      <div id="detailTitle" style="position:relative;z-index:1;font-family:'Bricolage Grotesque';font-weight:800;color:#fff;font-size:32px;line-height:1"></div>
+    </div>
+    <div style="padding:24px 26px">
+      <div id="detailClub" style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#2348FF;margin-bottom:16px"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;background:var(--fill);border-radius:14px;padding:16px 18px;margin-bottom:18px">
+        <div><div style="font-size:10.5px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px">Date &amp; time</div><div id="detailDate" style="font-size:14.5px;font-weight:600"></div></div>
+        <div><div style="font-size:10.5px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px">Location</div><div id="detailLoc" style="font-size:14.5px;font-weight:600"></div></div>
+        <div><div style="font-size:10.5px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px">Price</div><div id="detailPrice" style="font-size:14.5px;font-weight:700"></div></div>
+        <div><div style="font-size:10.5px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:4px">Attendance</div><div id="detailSpots" style="font-size:14.5px;font-weight:600"></div></div>
+      </div>
+      <p id="detailDesc" style="font-size:14.5px;line-height:1.7;color:var(--ink2);margin-bottom:18px"></p>
+      <!-- Registration deadline -->
+      <div id="detailDeadline" style="display:none"></div>
+      <!-- Reviews shown on past events -->
+      <div id="detailReviews" style="display:none;margin-bottom:18px"></div>
+      <div id="detailActions"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TICKET MODAL ═══ -->
+<div id="modalTicket" class="modal-overlay" style="display:none" onclick="closeModal('modalTicket')">
+  <div class="modal-box ticket-wrap" style="max-width:560px;border-radius:20px" onclick="event.stopPropagation()">
+    <div class="ticket-left" id="ticketLeft"></div>
+    <div class="ticket-divider"></div>
+    <div class="ticket-right" id="ticketRight"></div>
+  </div>
+</div>
+
+<!-- ═══ M-PESA MODAL ═══ -->
+<div id="modalPay" class="modal-overlay" style="display:none" onclick="closeModal('modalPay')">
+  <div class="modal-box" style="max-width:430px;overflow:hidden" onclick="event.stopPropagation()">
+    <div style="background:#0A7A3C;color:#fff;padding:22px 24px;display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="width:38px;height:38px;border-radius:10px;background:#fff;color:#0A7A3C;display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque';font-weight:800;font-size:14px">M</div>
+        <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:17px">Pay with M-Pesa</div>
+      </div>
+      <button onclick="closeModal('modalPay')" style="width:32px;height:32px;border-radius:9px;border:none;background:rgba(255,255,255,.2);color:#fff;font-size:15px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:22px 24px">
+      <div style="display:flex;align-items:center;justify-content:space-between;background:var(--fill);border-radius:13px;padding:15px 17px;margin-bottom:18px">
+        <div><div id="payTitle" style="font-size:14px;font-weight:700"></div><div style="font-size:12px;color:var(--muted);margin-top:2px">Amount due</div></div>
+        <div id="payAmt" style="font-family:'Bricolage Grotesque';font-weight:800;font-size:24px;color:#0A7A3C"></div>
+      </div>
+      <div id="payIdle">
+        <label class="field-label">M-Pesa phone number</label>
+        <input id="payPhone" placeholder="0712 345 678" style="width:100%;padding:13px 15px;border:1.5px solid var(--line);border-radius:11px;font-size:15px;background:#fff;outline:none;margin-bottom:18px;color:#17150F" type="tel">
+        <button onclick="submitPay()" style="width:100%;background:#0A7A3C;border:none;color:#fff;font-size:16px;font-weight:700;padding:15px;border-radius:13px;cursor:pointer">Send STK push 📱</button>
+        <p style="font-size:12.5px;color:var(--muted);text-align:center;margin-top:12px">A prompt will appear on your phone. Enter your PIN to confirm.</p>
+      </div>
+      <div id="paySending" style="display:none;text-align:center;padding:18px 0 6px">
+        <div style="width:46px;height:46px;border:4px solid #DDE7E0;border-top-color:#0A7A3C;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 18px"></div>
+        <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:18px;margin-bottom:8px">Check your phone</div>
+        <p id="payPhoneLabel" style="font-size:14px;color:var(--muted);line-height:1.55;max-width:280px;margin:0 auto"></p>
+      </div>
+      <div id="paySuccess" style="display:none;text-align:center;padding:14px 0 6px">
+        <div style="width:58px;height:58px;border-radius:50%;background:#E7F6E9;color:#0A7A3C;display:flex;align-items:center;justify-content:center;font-size:30px;margin:0 auto 16px">✓</div>
+        <div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:21px;margin-bottom:8px">Payment confirmed</div>
+        <p style="font-size:14px;color:var(--muted);line-height:1.55;margin-bottom:20px">Your QR ticket is ready. A confirmation email has been sent.</p>
+        <button onclick="closeModal('modalPay');setPage('tickets',null)" style="width:100%;background:#17150F;border:none;color:#fff;font-size:16px;font-weight:700;padding:15px;border-radius:13px;cursor:pointer">View my ticket →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ REVIEW MODAL ═══ -->
+<div id="modalReview" class="modal-overlay" style="display:none" onclick="closeModal('modalReview')">
+  <div class="modal-box" style="max-width:460px" onclick="event.stopPropagation()">
+    <div style="padding:22px 26px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:20px">Leave a Review</div>
+      <button onclick="closeModal('modalReview')" style="width:34px;height:34px;border-radius:10px;border:none;background:var(--fill);color:var(--ink);font-size:16px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:22px 26px">
+      <div id="reviewEventName" style="font-weight:700;font-size:15px;margin-bottom:18px;color:var(--ink2)"></div>
+      <input type="hidden" id="reviewEventId">
+      <div style="margin-bottom:18px">
+        <label class="field-label">Your rating</label>
+        <div id="starRow" style="display:flex;gap:6px;margin-top:8px">
+          <span class="star" onclick="setRating(1)">★</span>
+          <span class="star" onclick="setRating(2)">★</span>
+          <span class="star" onclick="setRating(3)">★</span>
+          <span class="star" onclick="setRating(4)">★</span>
+          <span class="star" onclick="setRating(5)">★</span>
+        </div>
+        <input type="hidden" id="reviewRating" value="0">
+      </div>
+      <div style="margin-bottom:20px">
+        <label class="field-label">Comment (optional)</label>
+        <textarea id="reviewComment" style="width:100%;padding:12px 15px;border:1.5px solid var(--line);border-radius:11px;font-size:14px;background:var(--card);color:var(--ink);outline:none;resize:vertical;min-height:90px;margin-top:6px" placeholder="What did you think?"></textarea>
+      </div>
+      <button onclick="submitReview()" style="width:100%;background:#2348FF;border:none;color:#fff;font-size:16px;font-weight:700;padding:14px;border-radius:13px;cursor:pointer">Submit review ⭐</button>
+    </div>
+  </div>
+</div>
+
+<!-- Theme toggle -->
+<button class="theme-toggle" id="themeBtn">☾</button>
+
+<!-- Toasts -->
+<div style="position:fixed;top:20px;right:20px;z-index:200;display:flex;flex-direction:column;gap:10px;pointer-events:none" id="toastContainer"></div>
+
+<script>
+try {
+/* ═══════════════════════════════════════════════
+   STRATHEVENTSS v4 — Student Portal
+   ═══════════════════════════════════════════════ */
+const API = window.location.origin + '/api';
+
+/* ── Helpers ── */
+const id = s => document.getElementById(s);
+const qs = s => document.querySelector(s);
+const ajax = async (method, path, body) => {
+  const opts = { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token()}` } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(d.error || d.message || `Request failed (${r.status})`);
+  return d;
+};
+const token = () => localStorage.getItem('se_token');
+const user  = () => { try { return JSON.parse(localStorage.getItem('se_user')||'null'); } catch(e){ return null; } };
+
+/* ── Theme ── */
+let theme = localStorage.getItem('se_theme') || 'light';
+function applyTheme(t) {
+  theme = t;
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem('se_theme', t);
+  id('themeBtn').textContent = t === 'dark' ? '☀' : '☾';
+}
+applyTheme(theme);
+id('themeBtn').onclick = () => applyTheme(theme === 'dark' ? 'light' : 'dark');
+
+/* ── Auth guard ── */
+const me = user();
+if (!me || !token() || me.role !== 'student') {
+  window.location.href = '../login.html';
+} else {
+/* ── Init header ── */
+function initHeader() {
+  id('greetName').textContent = me.full_name?.split(' ')[0] || 'there';
+  const av = id('userAvatar');
+  if (me.avatar_base64) { av.innerHTML = `<img src="${me.avatar_base64}" style="width:100%;height:100%;object-fit:cover">`; }
+  else { av.style.background = avatarColor(me.full_name||''); av.textContent = initials(me.full_name||''); }
+}
+
+/* ── Cat colours (faithful to design file) ── */
+const CATS = {
+  Music:'#FF4D2E', Tech:'#2348FF', Business:'#117A4E', Sports:'#E0930A',
+  Arts:'#C12C84', Career:'#0E7E8C', Faith:'#6B40D6', Language:'#0891B2', Other:'#6c6759'
+};
+function catColor(cat) {
+  for (const [k,v] of Object.entries(CATS)) { if ((cat||'').toLowerCase().includes(k.toLowerCase())) return v; }
+  return '#6c6759';
+}
+
+/* ── Avatar helpers ── */
+const AV_COLORS = ['#2348FF','#C12C84','#FF4D2E','#0E7E8C','#6B40D6','#117A4E','#E0930A'];
+function avatarColor(name) { let h=0; for(const c of (name||'')) h=(h*31+c.charCodeAt(0))&0xFFFFFF; return AV_COLORS[Math.abs(h)%AV_COLORS.length]; }
+function initials(name) { if(!name)return '?'; return name.split(' ').filter(Boolean).map(w=>w[0].toUpperCase()).slice(0,2).join(''); }
+
+initHeader();
+
+/* ── Date formatters ── */
+const DAY  = ['SUN','MON','TUE','WED','THU','FRI','SAT'];
+const MON  = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+function fmtShort(d) {
+  if (!d) return '—';
+  const dt = new Date(d);
+  const t  = dt.toLocaleTimeString('en-KE',{hour:'2-digit',minute:'2-digit',hour12:true}).toUpperCase();
+  return `${DAY[dt.getDay()]} ${String(dt.getDate()).padStart(2,'0')} ${MON[dt.getMonth()]} · ${t}`;
+}
+function fmtFull(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('en-KE',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+}
+function isPast(d) { return d && new Date(d) < new Date(); }
+
+/* ── State ── */
+let allEvents = [], myRegs = [], allClubs = [];
+let activeCategory = 'All', activeClubType = 'all', activeClubCat = 'all';
+let payRegId = null, payPollTimer = null;
+let currentRating = 0;
+let notifOpen = false;
+
+/* ══════ PAGE SWITCHING ══════ */
+const PAGES = { discover:'pgDiscover', tickets:'pgTickets', history:'pgHistory', clubs:'pgClubs', settings:'pgSettings' };
+const MOB_IDS = { discover:'mDiscover', tickets:'mTickets', history:'mHistory', clubs:'mClubs', settings:'mSettings' };
+
+let currentPage = 'discover';
+function setPage(p, btn) {
+  currentPage = p;
+  Object.values(PAGES).forEach(v => id(v).style.display = 'none');
+  id(PAGES[p]).style.display = 'block';
+  // desktop nav
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    const active = b.dataset.page === p;
+    b.style.color = active ? 'var(--ink)' : 'var(--muted)';
+    b.style.borderBottomColor = active ? '#2348FF' : 'transparent';
+  });
+  // mobile nav
+  Object.entries(MOB_IDS).forEach(([k,v]) => id(v)?.classList.toggle('active', k===p));
+  // load data
+  if (p==='tickets')  renderTickets();
+  if (p==='history')  renderHistory();
+  if (p==='clubs')    loadClubs();
+  if (p==='settings') loadSettings();
+}
+
+/* ══════ TOASTS ══════ */
+function toast(msg, type='success') {
+  const acc = type==='error'?'#FF4D2E':type==='info'?'#2348FF':'#0A7A3C';
+  const el = document.createElement('div');
+  el.className = 'toast';
+  el.style.borderLeft = `4px solid ${acc}`;
+  el.textContent = msg;
+  el.style.pointerEvents = 'all';
+  id('toastContainer').appendChild(el);
+  setTimeout(() => el.remove(), 3400);
+}
+
+/* ══════ MODALS ══════ */
+function openModal(mid)  { id(mid).style.display = 'flex'; }
+function closeModal(mid) { id(mid).style.display = 'none'; }
+
+/* ══════ DISCOVER ══════ */
+const ALL_CATS = ['All', 'Music', 'Tech', 'Business', 'Sports', 'Arts', 'Career', 'Faith', 'Language', 'Other'];
+
+function buildChips() {
+  id('chipRow').innerHTML = ALL_CATS.map(c => {
+    const active = activeCategory === c;
+    const col = c === 'All' ? '#17150F' : catColor(c);
+    return `<button class="chip ${active?'active':''}" onclick="setCat('${c}',this)" style="${active?`background:${col};color:#fff;border-color:${col}`:''}">${c}</button>`;
+  }).join('');
+}
+
+function setCat(c, btn) {
+  activeCategory = c;
+  buildChips();
+  filterAndRender();
+}
+
+function filterAndRender() {
+  const q = id('searchInput').value.toLowerCase();
+  const regIds = new Set(myRegs.filter(r=>r.status==='confirmed').map(r=>r.event_id));
+  let list = allEvents.filter(ev => {
+    const matchCat = activeCategory === 'All' || (ev.category||'').toLowerCase().includes(activeCategory.toLowerCase());
+    const matchQ   = !q || (ev.title||'').toLowerCase().includes(q) || (ev.clubs?.name||ev.club_name||'').toLowerCase().includes(q) || (ev.location||'').toLowerCase().includes(q);
+    return matchCat && matchQ;
+  });
+  const count = list.length;
+  const hasQ  = q || activeCategory !== 'All';
+  id('resultLabel').textContent = hasQ ? `${count} event${count===1?'':'s'} found` : 'Upcoming events across every club and faculty.';
+  id('evEmpty').style.display = !list.length ? 'block' : 'none';
+  id('evGrid').style.display  =  list.length ? 'grid'  : 'none';
+  id('evGrid').innerHTML = list.map(ev => renderEvCard(ev, regIds.has(ev.id))).join('');
+}
+
+function renderEvCard(ev, isReg) {
+  const color  = catColor(ev.category||'');
+  const banner = ev.banner_base64 || ev.banner_url;
+  const price  = ev.is_paid ? `KES ${Number(ev.price||0).toLocaleString()}` : 'FREE';
+  const memberPrice = ev.member_price != null && ev.non_member_price != null && Number(ev.member_price) < Number(ev.non_member_price)
+    ? `<div style="font-size:12px;color:#2348FF;font-weight:600;margin-top:2px">👥 Members: KES ${Number(ev.member_price).toLocaleString()}</div>` : '';
+  const regBadge = isReg
+    ? `<span style="display:inline-flex;align-items:center;gap:6px;background:#E7F6E9;color:#1B7A3D;font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:999px">✓ Registered</span>`
+    : `<button onclick="event.stopPropagation();doRegister('${ev.id}')" style="background:#17150F;border:none;color:#fff;font-size:13px;font-weight:700;padding:8px 16px;border-radius:9px;cursor:pointer" onmouseover="this.style.background='#2348FF'" onmouseout="this.style.background='#17150F'">Register</button>`;
+  return `<div class="ev-card" onclick="openDetail('${ev.id}')">
+    <div class="ev-banner" style="background:${color}">
+      ${banner ? `<img class="ev-banner-img" src="${banner}" alt=""><div class="ev-banner-overlay"></div>` : ''}
+      <div class="ev-banner-content">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <span style="font-family:'Space Mono',monospace;font-size:10.5px;letter-spacing:1px;color:rgba(255,255,255,.9);text-transform:uppercase">${ev.category||''}</span>
+          <span style="background:rgba(20,18,12,.8);color:#fff;font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:999px">${price}</span>
+        </div>
+        <div style="font-family:'Bricolage Grotesque';font-weight:800;color:#fff;font-size:23px;line-height:1.02">${ev.title||''}</div>
+      </div>
+    </div>
+    <div class="ev-body">
+      <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#2348FF">${ev.clubs?.name||ev.club_name||''}</div>
+      <div style="font-family:'Space Mono',monospace;font-size:12.5px;color:var(--muted)">${fmtShort(ev.event_date)}</div>
+      <div style="font-size:13.5px;color:var(--muted)">${ev.location||''}</div>
+      ${memberPrice}
+      <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:12px;margin-top:auto">
+        ${regBadge}
+        <span style="font-size:12px;color:var(--muted)">${ev.registration_count||0}${ev.capacity?` / ${ev.capacity}`:''} going</span>
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ══════ EVENT DETAIL ══════ */
+async function openDetail(evId) {
+  const ev = allEvents.find(e=>e.id===evId);
+  if (!ev) return;
+  const banner = ev.banner_base64 || ev.banner_url;
+  const color  = catColor(ev.category||'');
+  const past   = isPast(ev.event_date);
+  const isReg  = myRegs.some(r=>r.event_id===evId && r.status==='confirmed');
+  const reg    = myRegs.find(r=>r.event_id===evId);
+
+  // Banner
+  id('detailBanner').style.background = color;
+  const img = id('detailBannerImg');
+  if (banner) { img.src=banner; img.style.display='block'; id('detailBannerOverlay').style.display='block'; }
+  else { img.style.display='none'; id('detailBannerOverlay').style.display='none'; }
+  id('detailCat').textContent   = ev.category||'';
+  id('detailTitle').textContent = ev.title||'';
+  id('detailClub').textContent  = ev.clubs?.name || ev.club_name || '';
+  id('detailDate').textContent  = fmtShort(ev.event_date);
+  id('detailLoc').textContent   = ev.location||'—';
+  const priceEl = id('detailPrice');
+  if (!ev.is_paid) { priceEl.textContent='FREE'; priceEl.style.color='#1B7A3D'; }
+  else if (ev.member_price!=null&&ev.non_member_price!=null&&Number(ev.member_price)<Number(ev.non_member_price)) {
+    priceEl.innerHTML=`<span style="color:#2348FF">Member: KES ${Number(ev.member_price).toLocaleString()}</span> / Non-member: KES ${Number(ev.non_member_price).toLocaleString()}`;
+  } else { priceEl.textContent=`KES ${Number(ev.price||0).toLocaleString()}`; priceEl.style.color='var(--ink)'; }
+  id('detailSpots').textContent = `${ev.registration_count||0}${ev.capacity?` / ${ev.capacity}`:''} going`;
+  id('detailDesc').textContent  = ev.description||'';
+
+  // Registration deadline banner
+  const deadlineWrap = id('detailDeadline');
+  if (ev.registration_deadline && !past) {
+    const closed = new Date(ev.registration_deadline) < new Date();
+    deadlineWrap.style.display = 'block';
+    deadlineWrap.innerHTML = `<div style="display:flex;align-items:center;gap:8px;background:${closed?'#FEF2F2':'#FBEFD3'};border-radius:10px;padding:10px 14px;margin-bottom:16px;font-size:13.5px;font-weight:600;color:${closed?'#C0392B':'#9a6a0a'}">${closed?'⛔':'⏰'} Registration ${closed?'closed':'deadline'}: ${fmtFull(ev.registration_deadline)}${closed?' — registrations are now closed':''}</div>`;
+  } else {
+    deadlineWrap.style.display = 'none';
+  }
+
+  // Reviews (shown on past events)
+  const revWrap = id('detailReviews');
+  if (past) {
+    revWrap.style.display = 'block';
+    revWrap.innerHTML = '<p style="font-size:13px;color:var(--muted)">Loading reviews…</p>';
+    try {
+      const d = await ajax('GET', `/feedback/event/${evId}`);
+      const reviews = d.feedback || d || [];
+      if (!reviews.length) { revWrap.innerHTML='<p style="font-size:13px;color:var(--muted)">No reviews yet.</p>'; }
+      else {
+        const avg = reviews.reduce((s,r)=>s+r.rating,0)/reviews.length;
+        revWrap.innerHTML = `<div style="font-weight:700;font-size:15px;margin-bottom:12px">⭐ Reviews (${reviews.length}) · ${avg.toFixed(1)} avg</div>` +
+          reviews.slice(0,5).map(r=>`<div style="background:var(--fill);border-radius:12px;padding:13px 15px;margin-bottom:10px">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+              <div style="font-size:13px;font-weight:700">${r.users?.full_name||'Student'}</div>
+              <div style="color:#E0930A;font-size:13px">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div>
+            </div>
+            ${r.comment?`<p style="font-size:13px;color:var(--ink2)">${r.comment}</p>`:''}
+          </div>`).join('');
+      }
+    } catch(e) { revWrap.innerHTML=''; }
+  } else { revWrap.style.display='none'; }
+
+  // Action button
+  const actWrap = id('detailActions');
+  if (past) {
+    if (isReg) {
+      actWrap.innerHTML=`<button onclick="openReview('${evId}','${(ev.title||'').replace(/'/g,"\\'")}');closeModal('modalDetail')" style="width:100%;background:#17150F;border:none;color:#fff;font-size:16px;font-weight:700;padding:15px;border-radius:13px;cursor:pointer">⭐ Leave a review</button>`;
+    } else {
+      actWrap.innerHTML=`<button disabled style="width:100%;background:var(--fill2);border:none;color:var(--muted);font-size:16px;font-weight:700;padding:15px;border-radius:13px;cursor:not-allowed">Event has ended</button>`;
+    }
+  } else if (isReg) {
+    actWrap.innerHTML=`<button onclick="closeModal('modalDetail');openTicketModal('${reg?.id||''}')" style="width:100%;background:#17150F;border:none;color:#fff;font-size:16px;font-weight:700;padding:15px;border-radius:13px;cursor:pointer">✓ You're going — view ticket →</button>`;
+  } else {
+    const label = ev.is_paid ? `Register · KES ${Number(ev.price||0).toLocaleString()}` : 'Register for free';
+    actWrap.innerHTML=`<button onclick="doRegister('${evId}')" style="width:100%;background:#2348FF;border:none;color:#fff;font-size:16px;font-weight:700;padding:15px;border-radius:13px;cursor:pointer" onmouseover="this.style.background='#1B39CC'" onmouseout="this.style.background='#2348FF'">${label}</button>`;
+  }
+  openModal('modalDetail');
+}
+
+/* ══════ REGISTER ══════ */
+async function doRegister(evId) {
+  const ev = allEvents.find(e=>e.id===evId); if(!ev) return;
+  closeModal('modalDetail');
+  try {
+    const d = await ajax('POST', '/registrations', { event_id: evId });
+    myRegs = await loadMyRegs();
+    if (ev.is_paid && d.registration?.id) {
+      payRegId = d.registration.id;
+      id('payTitle').textContent = ev.title;
+      id('payAmt').textContent   = `KES ${Number(ev.price||0).toLocaleString()}`;
+      showPayState('idle');
+      openModal('modalPay');
+    } else {
+      toast('Registered! ✓ A confirmation email is on its way.', 'success');
+      filterAndRender();
+    }
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+/* ══════ M-PESA ══════ */
+function showPayState(s) {
+  id('payIdle').style.display    = s==='idle'    ? 'block' : 'none';
+  id('paySending').style.display = s==='sending' ? 'block' : 'none';
+  id('paySuccess').style.display = s==='success' ? 'block' : 'none';
+}
+
+async function submitPay() {
+  const phone = id('payPhone').value.trim();
+  if (!phone) { toast('Enter your M-Pesa number', 'error'); return; }
+  showPayState('sending');
+  id('payPhoneLabel').innerHTML = `We've sent an STK push to <strong>${phone}</strong>. Enter your M-Pesa PIN to complete payment.`;
+  try {
+    await ajax('POST', '/payments/stk-push', { registration_id: payRegId, phone_number: phone });
+    let tries = 0;
+    payPollTimer = setInterval(async () => {
+      tries++;
+      if (tries > 20) { clearInterval(payPollTimer); toast('Payment timed out. Try again.', 'error'); closeModal('modalPay'); return; }
+      try {
+        const regs = await loadMyRegs();
+        myRegs = regs;
+        const confirmed = regs.find(r=>r.id===payRegId && r.status==='confirmed');
+        if (confirmed) { clearInterval(payPollTimer); showPayState('success'); filterAndRender(); }
+      } catch(e) {}
+    }, 5000);
+  } catch(e) { toast(e.message, 'error'); showPayState('idle'); }
+}
+
+/* ══════ QR CODE BUILDER (faithful to design) ══════ */
+function buildQR(seed) {
+  const n = 25; let x = 0;
+  for (let i=0;i<seed.length;i++) x=(x*31+seed.charCodeAt(i))>>>0;
+  const rnd=()=>{x=(x*1664525+1013904223)>>>0;return x/4294967296;};
+  const finder=(r,c)=>(r<7&&c<7)||(r<7&&c>=n-7)||(r>=n-7&&c<7);
+  const cells=[];
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    let on;
+    if(finder(r,c)){const rr=r<7?r:r-(n-7),cc=c<7?c:c-(n-7);on=(rr===0||rr===6||cc===0||cc===6)||(rr>=2&&rr<=4&&cc>=2&&cc<=4);}
+    else{on=rnd()>.5;}
+    cells.push(on);
+  }
+  const s=(100/n).toFixed(2);
+  return `<div style="display:grid;grid-template-columns:repeat(${n},${s}%);width:100%;height:100%">${cells.map(on=>`<div style="background:${on?'#17150F':'transparent'}"></div>`).join('')}</div>`;
+}
+
+/* ══════ MY TICKETS ══════ */
+function renderTickets() {
+  const tickets = myRegs.filter(r=>r.tickets?.length);
+  if (!tickets.length) { id('ticketList').innerHTML=''; id('ticketEmpty').style.display='block'; return; }
+  id('ticketEmpty').style.display = 'none';
+  id('ticketList').innerHTML = tickets.map(reg => {
+    const ev     = reg.events || {};
+    const ticket = reg.tickets[0];
+    const past   = isPast(ev.event_date);
+    const statusLabel = past&&!ticket.is_used ? 'Expired' : ticket.is_used ? 'Used' : (reg.payments?.length?'Paid · Valid':'Valid');
+    const statusBg    = past&&!ticket.is_used ? 'rgba(107,114,128,.2)'  : 'rgba(216,242,74,.18)';
+    const statusFg    = past&&!ticket.is_used ? '#9CA3AF'               : '#D8F24A';
+    const color = catColor(ev.category||'');
+    const qrHtml = ev.banner_base64
+      ? `<img src="${ev.banner_base64}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`
+      : buildQR(ticket.ticket_code||'CODE');
+    return `<div class="ticket-wrap" onclick="openTicketModal('${reg.id}')">
+      <div class="ticket-left">
+        <div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+            <span style="width:10px;height:10px;border-radius:50%;background:${color}"></span>
+            <span style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#a29c8e">${ev.category||''}</span>
+          </div>
+          <h3 style="font-family:'Bricolage Grotesque';font-weight:800;font-size:25px;line-height:1.05;margin-bottom:6px">${ev.title||'—'}</h3>
+          <div style="font-size:13.5px;color:#a29c8e;margin-bottom:18px">${ev.clubs?.name||''}</div>
+          <div style="display:flex;gap:30px">
+            <div><div style="font-size:10.5px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:#7a7468;margin-bottom:4px">When</div><div style="font-size:14px;font-weight:600">${fmtShort(ev.event_date)}</div></div>
+            <div><div style="font-size:10.5px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:#7a7468;margin-bottom:4px">Where</div><div style="font-size:14px;font-weight:600">${ev.location||'—'}</div></div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:14px;margin-top:22px">
+          <div style="font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:#D8F24A;letter-spacing:2px">${ticket.ticket_code||'—'}</div>
+          <span style="background:${statusBg};color:${statusFg};font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:999px">${statusLabel}</span>
+        </div>
+      </div>
+      <div class="ticket-divider"></div>
+      <div class="ticket-right">
+        <div class="ticket-qr-box">${qrHtml}</div>
+        <div style="font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:#a29c8e">Scan at entry</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ═══ TICKET MODAL ═══ */
+function openTicketModal(regId) {
+  const reg = myRegs.find(r=>r.id===regId);
+  if (!reg?.tickets?.length) { toast('Ticket not found', 'error'); return; }
+  const ev     = reg.events || {};
+  const ticket = reg.tickets[0];
+  const past   = isPast(ev.event_date);
+  const statusLabel = past&&!ticket.is_used ? 'Expired' : ticket.is_used ? 'Used' : 'Valid';
+  const statusBg    = past&&!ticket.is_used ? 'rgba(107,114,128,.2)' : ticket.is_used ? 'rgba(16,185,129,.2)' : 'rgba(216,242,74,.18)';
+  const statusFg    = past&&!ticket.is_used ? '#9CA3AF'              : ticket.is_used ? '#065F46'             : '#D8F24A';
+  const color = catColor(ev.category||'');
+  id('ticketLeft').innerHTML = `
+    <div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${color}"></span>
+        <span style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:#a29c8e">${ev.category||''}</span>
+      </div>
+      <h3 style="font-family:'Bricolage Grotesque';font-weight:800;font-size:25px;line-height:1.05;margin-bottom:6px">${ev.title||'—'}</h3>
+      <div style="font-size:13.5px;color:#a29c8e;margin-bottom:18px">${ev.clubs?.name||''}</div>
+      <div style="display:flex;gap:30px">
+        <div><div style="font-size:10.5px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:#7a7468;margin-bottom:4px">When</div><div style="font-size:14px;font-weight:600">${fmtShort(ev.event_date)}</div></div>
+        <div><div style="font-size:10.5px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:#7a7468;margin-bottom:4px">Where</div><div style="font-size:14px;font-weight:600">${ev.location||'—'}</div></div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;margin-top:22px">
+      <div style="font-family:'Space Mono',monospace;font-size:15px;font-weight:700;color:#D8F24A;letter-spacing:2px">${ticket.ticket_code||'—'}</div>
+      <span style="background:${statusBg};color:${statusFg};font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:999px">${statusLabel}</span>
+    </div>`;
+  // QR: show actual QR if valid, expired message if past
+  const qrHtml = past && !ticket.is_used
+    ? `<div style="text-align:center"><div style="font-size:28px;margin-bottom:6px">🕐</div><div style="font-size:11px;color:#a29c8e">Expired</div></div>`
+    : (ticket.qr_image_url ? `<img src="${ticket.qr_image_url}" style="width:100%;height:100%;object-fit:contain">` : buildQR(ticket.ticket_code||''));
+  id('ticketRight').innerHTML = `<div class="ticket-qr-box">${qrHtml}</div><div style="font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:#a29c8e">Scan at entry</div>`;
+  openModal('modalTicket');
+}
+
+/* ══════ HISTORY ══════ */
+function renderHistory() {
+  if (!myRegs.length) { id('histEmpty').style.display='block'; id('historyUpcoming').style.display='none'; id('historyPast').style.display='none'; return; }
+  id('histEmpty').style.display='none'; id('historyUpcoming').style.display='block'; id('historyPast').style.display='block';
+  const now    = new Date();
+  const upcoming = myRegs.filter(r=>r.events?.event_date && new Date(r.events.event_date)>=now);
+  const past     = myRegs.filter(r=>!r.events?.event_date || new Date(r.events.event_date)<now);
+  const histCard = (reg, isP) => {
+    const ev = reg.events||{}; const color = catColor(ev.category||'');
+    const banner = ev.banner_base64||ev.banner_url;
+    const statusLabel = isP ? 'Past' : 'Upcoming';
+    return `<div style="background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;cursor:pointer" onclick="${isP&&reg.tickets?.length?`openReview('${ev.id}','${(ev.title||'').replace(/'/g,"\\'")}')`:reg.tickets?.length?`openTicketModal('${reg.id}')`:''}" >
+      <div style="height:110px;padding:14px 15px;display:flex;flex-direction:column;justify-content:space-between;background:${color};position:relative;overflow:hidden">
+        ${banner?`<img style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover" src="${banner}"><div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.1),rgba(0,0,0,.55))"></div>`:''}
+        <div style="position:relative;z-index:1;font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:rgba(255,255,255,.9);text-transform:uppercase">${ev.category||''}</div>
+        <div style="position:relative;z-index:1;font-family:'Bricolage Grotesque';font-weight:800;color:#fff;font-size:20px;line-height:1.05">${ev.title||'—'}</div>
+      </div>
+      <div style="padding:13px 15px;display:flex;flex-direction:column;gap:8px">
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#2348FF">${ev.clubs?.name||''}</div>
+        <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--muted)">${fmtShort(ev.event_date)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:10px;margin-top:4px">
+          <span style="background:${isP?'var(--fill2)':'#E7F6E9'};color:${isP?'var(--muted)':'#1B7A3D'};font-size:11.5px;font-weight:700;padding:4px 11px;border-radius:999px">${statusLabel}</span>
+          ${isP&&reg.tickets?.length?`<span style="font-size:12px;font-weight:700;color:#2348FF;cursor:pointer">⭐ Review</span>`:reg.tickets?.length?`<span style="font-size:12px;font-weight:700;color:#2348FF;cursor:pointer">🎟 Ticket</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  };
+  id('histUpList').innerHTML   = upcoming.length ? upcoming.map(r=>histCard(r,false)).join('') : '<p style="font-size:13.5px;color:var(--muted)">No upcoming events.</p>';
+  id('histPastList').innerHTML = past.length     ? past.map(r=>histCard(r,true)).join('')     : '<p style="font-size:13.5px;color:var(--muted)">No past events yet.</p>';
+}
+
+/* ══════ CLUBS ══════ */
+const CLUB_CATEGORIES = [
+  'Arts, Literary & Creative Clubs',
+  'Environmental and Sustainability Clubs',
+  'Finance, Business and Entrepreneurial Clubs',
+  'International Students',
+  'IT, Innovation & Research',
+  'Language Clubs',
+  'Leadership and Public Speaking Clubs',
+  'Mental Health and First Aid Clubs',
+  'Tourism and Hospitality Clubs',
+  'Sports','Other'
+];
+
+async function loadClubs() {
+  try {
+    const d = await ajax('GET', '/memberships/clubs');
+    allClubs = d.clubs || d || [];
+    buildClubFilters();
+    renderClubs();
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+function buildClubFilters() {
+  id('clubTypeChips').innerHTML = ['all','club','sport'].map(t => {
+    const active = activeClubType===t;
+    const label  = t==='all'?'All':t==='club'?'Clubs only':'Sports only';
+    return `<button class="chip ${active?'active':''}" onclick="setClubType('${t}')">${label}</button>`;
+  }).join('');
+  const allCats = ['All Categories',...CLUB_CATEGORIES];
+  id('clubCatChips').innerHTML = allCats.map(c => {
+    const val    = c==='All Categories'?'all':c;
+    const active = activeClubCat===val;
+    return `<button class="chip ${active?'active':''}" style="font-size:12.5px;padding:6px 13px" onclick="setClubCat('${val.replace(/'/g,"\\'")}',this)">${c}</button>`;
+  }).join('');
+}
+
+function setClubType(t) { activeClubType=t; buildClubFilters(); renderClubs(); }
+function setClubCat(c)  { activeClubCat=c;  buildClubFilters(); renderClubs(); }
+
+function renderClubs() {
+  let list = allClubs;
+  if (activeClubType==='club')  list=list.filter(c=>(c.type||'club').toLowerCase()!=='sport');
+  if (activeClubType==='sport') list=list.filter(c=>(c.type||'club').toLowerCase()==='sport');
+  if (activeClubCat!=='all')    list=list.filter(c=>(c.category||'')===activeClubCat);
+  id('clubEmpty').style.display= !list.length?'block':'none';
+  id('clubGrid').style.display =  list.length?'grid':'none';
+  id('clubGrid').innerHTML = list.map(c => {
+    const mem = c.membership_status;
+    const color = avatarColor(c.name||'');
+    const logo  = c.logo_base64||c.logo_url;
+    const badge = mem==='approved'
+      ? `<span style="display:inline-flex;align-items:center;gap:6px;background:#E7F6E9;color:#1B7A3D;font-size:13px;font-weight:700;padding:9px 16px;border-radius:11px">✓ Member</span>`
+      : mem==='pending'
+        ? `<span style="display:inline-flex;align-items:center;gap:6px;background:#FBEFD3;color:#9a6a0a;font-size:13px;font-weight:700;padding:9px 16px;border-radius:11px">⏳ Request pending</span>`
+        : `<button onclick="joinClub('${c.id}','${(c.name||'').replace(/'/g,"\\'")}',this)" style="background:#17150F;border:none;color:#fff;font-size:13.5px;font-weight:700;padding:10px 20px;border-radius:11px;cursor:pointer" onmouseover="this.style.background='#2348FF'" onmouseout="this.style.background='#17150F'">+ Join ${c.type==='sport'?'sport':'club'}</button>`;
+    return `<div class="club-card">
+      <div style="display:flex;align-items:center;gap:13px">
+        <div style="width:50px;height:50px;border-radius:14px;background:${color};color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque';font-weight:800;font-size:18px;flex-shrink:0;overflow:hidden">${logo?`<img src="${logo}" style="width:100%;height:100%;object-fit:cover">`:initials(c.name||'')}</div>
+        <div>
+          <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:17px;line-height:1.1">${c.name||''}</div>
+          <div style="font-size:12px;font-family:'Space Mono',monospace;color:var(--muted);margin-top:3px">${c.category||''}${c.type?` · ${c.type}`:''}</div>
+        </div>
+      </div>
+      <p style="font-size:13.5px;line-height:1.55;color:var(--muted);flex:1">${c.description||''}</p>
+      <div>${badge}</div>
+    </div>`;
+  }).join('');
+}
+
+async function joinClub(clubId, name, btn) {
+  btn.disabled=true; btn.textContent='Requesting…';
+  try {
+    await ajax('POST', '/memberships/join', { club_id: clubId });
+    toast(`Request sent to join ${name}`, 'info');
+    await loadClubs();
+  } catch(e) { toast(e.message,'error'); btn.disabled=false; btn.textContent=`+ Join`; }
+}
+
+/* ══════ REVIEWS ══════ */
+function openReview(evId, evTitle) {
+  id('reviewEventId').value = evId;
+  id('reviewEventName').textContent = evTitle;
+  id('reviewComment').value = '';
+  setRating(0);
+  openModal('modalReview');
+}
+
+function setRating(r) {
+  currentRating = r;
+  id('reviewRating').value = r;
+  document.querySelectorAll('#starRow .star').forEach((s,i) => s.classList.toggle('on', i<r));
+}
+
+async function submitReview() {
+  const evId    = id('reviewEventId').value;
+  const rating  = Number(id('reviewRating').value);
+  const comment = id('reviewComment').value.trim();
+  if (!rating) { toast('Please select a star rating', 'error'); return; }
+  try {
+    await ajax('POST', '/feedback', { event_id: evId, rating, comment });
+    toast('Review submitted ⭐', 'success');
+    closeModal('modalReview');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+/* ══════ SETTINGS ══════ */
+function loadSettings() {
+  const u = user();
+  if (!u) return;
+  const settAv = id('settingsAvatar');
+  if (u.avatar_base64) { settAv.innerHTML=`<img src="${u.avatar_base64}" style="width:100%;height:100%;object-fit:cover">`; }
+  else { settAv.style.background=avatarColor(u.full_name||''); settAv.textContent=initials(u.full_name||''); }
+  id('settingsName').textContent  = u.full_name||'';
+  id('settingsEmail').textContent = u.email||'';
+  id('settingsAdm').textContent   = u.admission_number ? `ID: ${u.admission_number}` : '';
+}
+
+async function handleAvatarUpload(e) {
+  const file = e.target.files[0]; if (!file) return;
+  if (file.size>1024*1024) { toast('Image must be under 1MB', 'error'); e.target.value=''; return; }
+  const reader = new FileReader();
+  reader.onload = async ev => {
+    try {
+      await ajax('PUT', '/auth/profile-picture', { avatar_base64: ev.target.result });
+      const u = user(); if(u){u.avatar_base64=ev.target.result;localStorage.setItem('se_user',JSON.stringify(u));}
+      initHeader(); loadSettings();
+      toast('Profile picture updated!', 'success');
+    } catch(err) { toast(err.message, 'error'); }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function changePassword() {
+  const current = id('pwCurrent').value;
+  const nw      = id('pwNew').value;
+  const cf      = id('pwConfirm').value;
+  if (!current||!nw||!cf) { toast('All fields are required', 'error'); return; }
+  if (nw!==cf) { toast('Passwords do not match', 'error'); return; }
+  if (nw.length<8) { toast('Min. 8 characters', 'error'); return; }
+  try {
+    await ajax('PUT', '/auth/change-password', { current_password:current, new_password:nw });
+    toast('Password updated!', 'success');
+    ['pwCurrent','pwNew','pwConfirm'].forEach(x=>id(x).value='');
+  } catch(e) { toast(e.message, 'error'); }
+}
+
+/* ══════ NOTIFICATIONS ══════ */
+function toggleNotif() {
+  notifOpen = !notifOpen;
+  id('notifPanel').style.display = notifOpen ? 'block' : 'none';
+  if (notifOpen) loadNotifs();
+}
+document.addEventListener('click', e => {
+  if (notifOpen && !e.target.closest('#notifPanel') && !e.target.closest('button[onclick="toggleNotif()"]')) {
+    notifOpen=false; id('notifPanel').style.display='none';
+  }
+});
+
+async function loadNotifs() {
+  try {
+    const d = await ajax('GET', '/notifications/my');
+    const notifs = d.notifications||d||[];
+    const unread = notifs.filter(n=>!n.is_read).length;
+    id('notifBadge').style.display = unread ? 'block' : 'none';
+    id('notifList').innerHTML = !notifs.length
+      ? '<div style="padding:24px;text-align:center;font-size:13.5px;color:var(--muted)">No notifications yet</div>'
+      : notifs.slice(0,10).map(n=>`<div style="padding:13px 17px;border-bottom:1px solid var(--line);display:flex;gap:11px;background:${n.is_read?'':'var(--fill)'}">
+          <span style="width:8px;height:8px;border-radius:50%;background:${n.is_read?'var(--line)':'#2348FF'};flex-shrink:0;margin-top:5px"></span>
+          <div><div style="font-size:13.5px;font-weight:700">${n.title||''}</div><div style="font-size:12.5px;color:var(--muted);margin-top:2px">${n.message||''}</div></div>
+        </div>`).join('');
+  } catch(e) {}
+}
+
+/* ══════ DATA LOADERS ══════ */
+async function loadMyRegs() {
+  try {
+    const d = await ajax('GET', '/registrations/my');
+    return d.registrations || d || [];
+  } catch(e) { return []; }
+}
+
+/* ══════ LOGOUT ══════ */
+function doLogout() { localStorage.removeItem('se_token'); localStorage.removeItem('se_user'); window.location.href='../public/'; }
+
+/* ══════ BOOT ══════ */
+async function boot() {
+  // Load events (upcoming only for discover, feature #7)
+  try {
+    const d = await ajax('GET', '/events?upcoming=true&status=approved');
+    allEvents = d.events || d || [];
+  } catch(e) { console.error('Failed to load events:', e); allEvents = []; }
+
+  // Load registrations
+  try {
+    myRegs = await loadMyRegs();
+  } catch(e) { console.error('Failed to load registrations:', e); myRegs = []; }
+
+  // Render — wrapped so a render bug never leaves the page blank/silent
+  try {
+    buildChips();
+    filterAndRender();
+  } catch(e) {
+    console.error('Failed to render discover page:', e);
+    const grid = document.getElementById('evGrid');
+    if (grid) {
+      grid.style.display = 'block';
+      grid.innerHTML = `<div style="grid-column:1/-1;padding:40px 20px;text-align:center;background:#FBE3DD;border-radius:14px;color:#C0392B">
+        <div style="font-weight:700;margin-bottom:6px">Something went wrong loading events</div>
+        <div style="font-size:13px;opacity:.85">${(e && e.message) ? e.message : 'Unknown error'}</div>
+      </div>`;
+    }
+  }
+
+  // Notifications
+  try { await loadNotifs(); } catch(e) { console.error('Failed to load notifications:', e); }
+}
+
+boot().catch(e => console.error('boot() failed:', e));
+
+// Explicitly expose every function referenced by inline onclick/onchange
+// attributes in the HTML — block-scoped function declarations inside the
+// try{}/else{} nesting would otherwise be invisible to global lookup.
+Object.assign(window, {
+  changePassword, closeModal, doLogout, doRegister, filterAndRender,
+  handleAvatarUpload, joinClub, openDetail, openReview, openTicketModal,
+  setCat, setClubCat, setClubType, setPage, setRating, submitPay,
+  submitReview, toggleNotif
+});
+
+} // end auth-guard else block
+
+} catch (fatalError) {
+  console.error('Student portal fatal error:', fatalError);
+  document.body.insertAdjacentHTML('afterbegin', `
+    <div style="position:fixed;inset:0;z-index:9999;background:#FBE3DD;display:flex;align-items:center;justify-content:center;padding:30px;font-family:sans-serif">
+      <div style="max-width:560px;background:#fff;border-radius:18px;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+        <div style="font-size:32px;margin-bottom:10px">⚠️</div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;color:#C0392B;margin-bottom:10px">Page failed to load</div>
+        <p style="font-size:14px;color:#444;line-height:1.6;margin-bottom:14px">A script error stopped this page from working. Please screenshot the message below and send it back so it can be fixed.</p>
+        <pre style="background:#FFF5F2;border:1px solid #F4C6BB;border-radius:10px;padding:14px;font-size:12.5px;color:#C0392B;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow:auto">${(fatalError && fatalError.stack) ? fatalError.stack : String(fatalError)}</pre>
+        <button onclick="location.reload()" style="margin-top:16px;background:#17150F;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-weight:700;cursor:pointer">Reload page</button>
+      </div>
+    </div>
+  `);
+}
+</script>
+</body>
+</html>

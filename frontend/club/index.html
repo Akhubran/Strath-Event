@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>StrathEvents — Club Admin</title>
+<script>
+(function () {
+  let shown = false;
+  function showFatal(err) {
+    if (shown) return; shown = true;
+    var msg = (err && err.stack) ? err.stack : (err && err.message) ? err.message : String(err);
+    function render() {
+      document.body.insertAdjacentHTML('afterbegin',
+        '<div style="position:fixed;inset:0;z-index:99999;background:#FBE3DD;display:flex;align-items:center;justify-content:center;padding:30px;font-family:sans-serif">' +
+          '<div style="max-width:560px;background:#fff;border-radius:18px;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,.25)">' +
+            '<div style="font-size:32px;margin-bottom:10px">\u26A0\uFE0F</div>' +
+            '<div style="font-weight:800;font-size:22px;color:#C0392B;margin-bottom:10px">Page failed to load</div>' +
+            '<p style="font-size:14px;color:#444;line-height:1.6;margin-bottom:14px">A script error stopped this page from working. Please screenshot the message below and send it back so it can be fixed.</p>' +
+            '<pre style="background:#FFF5F2;border:1px solid #F4C6BB;border-radius:10px;padding:14px;font-size:12.5px;color:#C0392B;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow:auto">' + msg.replace(/</g,'&lt;') + '</pre>' +
+            '<button onclick="location.reload()" style="margin-top:16px;background:#17150F;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-weight:700;cursor:pointer">Reload page</button>' +
+          '</div>' +
+        '</div>');
+    }
+    if (document.body) render();
+    else document.addEventListener('DOMContentLoaded', render);
+  }
+  window.addEventListener('error', function (e) { showFatal(e.error || e.message); });
+  window.addEventListener('unhandledrejection', function (e) { showFatal(e.reason); });
+})();
+</script>
+<link rel="stylesheet" href="../assets/css/se.css">
+<style>
+  .ev-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+  .mem-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+  .form-grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .scan-wrap{max-width:380px;margin:0 auto}
+  .card-table-wrap{padding:4px 22px 18px}
+  .card-table{width:100%}
+  .card-table th{text-align:left;padding:12px 10px 12px 0;font-size:10.5px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--line);white-space:nowrap}
+  .card-table th.r{text-align:right;padding-right:0}
+  .card-table td{padding:14px 10px 14px 0;font-size:14px;border-top:1px solid var(--line);vertical-align:middle}
+  .card-table td.r{text-align:right;padding-right:0}
+  .stat-grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:20px 0}
+  .stat-grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:20px 0}
+  @media(max-width:768px){.ev-grid3{grid-template-columns:1fr}.mem-grid{grid-template-columns:1fr}.form-grid2{grid-template-columns:1fr}.card-table-wrap{overflow-x:auto}}
+  @media(max-width:640px){.stat-grid-3{grid-template-columns:1fr 1fr}.stat-grid-4{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="se-wrap" id="app">
+
+<header class="se-header">
+  <div class="se-header-inner">
+    <div class="se-logo"><span class="se-logo-mark">✦</span>StrathEvents<span class="se-role-tag">CLUB ADMIN</span></div>
+    <nav class="se-nav" id="mainNav"></nav>
+    <div class="se-user-area">
+      <div class="se-user-info" id="userInfo"></div>
+      <div class="se-avatar" id="avatarEl"></div>
+      <button class="ham-btn" onclick="SE.openDrawer()"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+</header>
+<div class="mob-overlay" id="mobOverlay"></div>
+<div class="mob-drawer" id="mobDrawer">
+  <div class="se-logo"><span class="se-logo-mark">✦</span>StrathEvents</div>
+  <div class="mob-drawer-nav" id="drawerNav"></div>
+  <div style="margin-top:auto;padding-top:20px;border-top:1px solid var(--line)"><button onclick="logout()" class="mob-drawer-btn" style="color:#C0392B;width:100%">Sign out</button></div>
+</div>
+
+<main class="se-main">
+  <div class="se-page-header"><h1 class="se-page-title" id="pageTitle">Dashboard</h1><p class="se-page-sub" id="pageSub"></p></div>
+
+  <!-- ═══ DASHBOARD ═══ -->
+  <div id="pageDashboard" class="page-content">
+    <div class="se-stat-grid" id="statGrid"></div>
+    <div class="se-card">
+      <div class="se-card-header"><span class="se-card-title">My events</span><button class="btn btn-ghost btn-sm" onclick="goPage('events')">View all →</button></div>
+      <div class="card-table-wrap">
+        <table class="card-table"><thead><tr><th>Event</th><th>Date</th><th>Registered</th><th>Status</th></tr></thead>
+        <tbody id="dashEventsBody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ MY EVENTS ═══ -->
+  <div id="pageEvents" class="page-content" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;gap:8px" id="evStatusChips"></div>
+      <button class="btn btn-dark" onclick="openEventModal(null)">+ Create event</button>
+    </div>
+    <div id="upcomingSection">
+      <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Upcoming</div>
+      <div class="ev-grid3" id="upcomingGrid"></div>
+    </div>
+    <div id="pastSection" style="margin-top:36px;padding-top:36px;border-top:1px solid var(--line)">
+      <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin-bottom:14px">Past events</div>
+      <div class="ev-grid3" id="pastGrid"></div>
+    </div>
+  </div>
+
+  <!-- ═══ MEMBERS ═══ -->
+  <div id="pageMembers" class="page-content" style="display:none">
+    <div class="mem-grid">
+      <div class="se-card">
+        <div class="se-card-header"><span class="se-card-title">Pending requests</span><span class="se-badge" id="pendingBadge" style="display:none">0</span></div>
+        <div style="padding:8px 22px 18px" id="pendingList"></div>
+      </div>
+      <div class="se-card">
+        <div class="se-card-header"><span class="se-card-title">Active members</span></div>
+        <div style="padding:8px 22px 18px" id="activeList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ VERIFY TICKET ═══ -->
+  <div id="pageVerify" class="page-content" style="display:none">
+    <div style="max-width:520px">
+      <div class="verify-box">
+        <div style="font-family:'Space Mono',monospace;font-size:11.5px;text-transform:uppercase;letter-spacing:1px;color:#D8F24A;margin-bottom:8px">Door check-in</div>
+        <h3 style="font-family:'Bricolage Grotesque';font-weight:800;font-size:24px;margin-bottom:6px">Verify a ticket</h3>
+        <p style="font-size:14px;color:#b8b2a4;margin-bottom:20px">Type the ticket code or scan the QR code with the camera.</p>
+        <div style="display:flex;gap:10px;margin-bottom:12px">
+          <input id="verifyInput" class="verify-input" placeholder="SE-XXXXXX" oninput="this.value=this.value.toUpperCase()">
+          <button onclick="doVerify()" class="btn-yellow" style="padding:0 22px;border-radius:12px;flex-shrink:0">Check</button>
+        </div>
+        <button onclick="toggleScanner()" class="btn-yellow" style="width:100%;margin-bottom:0" id="scanBtn">📷 Scan QR code</button>
+      </div>
+      <!-- QR Scanner -->
+      <div id="scannerSection" style="display:none;margin-top:16px">
+        <div class="verify-box" style="padding:16px">
+          <div style="font-size:12px;color:#b8b2a4;margin-bottom:10px;text-align:center">Point camera at the QR code on the ticket</div>
+          <div class="scan-wrap">
+            <div class="qr-scanner-wrap" style="min-height:240px;display:flex;align-items:center;justify-content:center" id="scannerContainer">
+              <span style="color:#b8b2a4;font-size:13px">Loading camera…</span>
+            </div>
+            <div class="qr-corner qr-corner-tl"></div>
+            <div class="qr-corner qr-corner-tr"></div>
+            <div class="qr-corner qr-corner-bl"></div>
+            <div class="qr-corner qr-corner-br"></div>
+          </div>
+          <button onclick="stopScanner()" class="btn btn-ghost" style="width:100%;margin-top:12px">Cancel scan</button>
+        </div>
+      </div>
+      <!-- Verify result -->
+      <div id="verifyResult" style="display:none"></div>
+    </div>
+  </div>
+
+  <!-- ═══ ATTENDANCE ═══ -->
+  <div id="pageAttendance" class="page-content" style="display:none">
+    <div class="se-field"><label class="se-label">Select event</label>
+      <select class="se-select" id="attendEventSelect" onchange="loadClubAttendance()"><option value="">— Choose an event —</option></select>
+    </div>
+    <div id="attendanceContent"></div>
+  </div>
+
+  <!-- ═══ PAYMENTS ═══ -->
+  <div id="pagePayments" class="page-content" style="display:none">
+    <div class="se-field" style="max-width:420px"><label class="se-label">Select event</label>
+      <select class="se-select" id="payEventSelect" onchange="loadClubPayments()"><option value="">— Choose a paid event —</option></select>
+    </div>
+    <div id="paymentsContent"></div>
+  </div>
+
+  <!-- ═══ SETTINGS ═══ -->
+  <div id="pageSettings" class="page-content" style="display:none">
+    <div style="max-width:600px;display:flex;flex-direction:column;gap:20px">
+
+      <div class="se-card">
+        <div class="se-card-header"><span class="se-card-title">Profile</span></div>
+        <div style="padding:24px">
+          <div style="display:flex;align-items:center;gap:20px;margin-bottom:18px">
+            <div style="position:relative;cursor:pointer" onclick="document.getElementById('clubAvatarFile').click()" title="Click to change photo">
+              <div id="clubSettingsAvatar" style="width:72px;height:72px;border-radius:50%;background:#FF4D2E;color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Bricolage Grotesque';font-weight:800;font-size:24px;overflow:hidden;flex-shrink:0"></div>
+              <div id="clubAvatarOverlay" style="position:absolute;inset:0;border-radius:50%;background:rgba(20,18,12,.45);display:flex;align-items:center;justify-content:center;font-size:17px;opacity:0;transition:opacity .15s">📷</div>
+            </div>
+            <input type="file" id="clubAvatarFile" accept="image/jpeg,image/png,image/webp" style="display:none" onchange="uploadClubAvatar(event)">
+            <div>
+              <div style="font-family:'Bricolage Grotesque';font-weight:700;font-size:19px" id="clubSettingsName">—</div>
+              <div style="font-size:13px;color:var(--muted);margin-top:3px" id="clubSettingsEmail">—</div>
+              <span style="display:inline-block;background:#FBE3DD;color:#FF4D2E;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:999px;margin-top:6px">Club Admin</span>
+            </div>
+          </div>
+          <p style="font-size:12.5px;color:var(--muted)">Click your photo to upload a profile picture (optional, max 1MB).</p>
+        </div>
+      </div>
+
+      <div class="se-card">
+        <div class="se-card-header"><span class="se-card-title">Change Password</span></div>
+        <div style="padding:24px;display:flex;flex-direction:column;gap:16px">
+          <div class="se-field"><label class="se-label">Current password</label><input type="password" id="clubPwCurrent" class="se-input" placeholder="••••••••"></div>
+          <div class="se-field"><label class="se-label">New password</label><input type="password" id="clubPwNew" class="se-input" placeholder="Min. 8 characters"></div>
+          <div class="se-field"><label class="se-label">Confirm new password</label><input type="password" id="clubPwConfirm" class="se-input" placeholder="Repeat new password"></div>
+          <button onclick="saveClubPassword()" class="btn btn-dark" style="align-self:flex-start;padding:12px 28px">Update password</button>
+        </div>
+      </div>
+
+      <div class="se-card">
+        <div class="se-card-header"><span class="se-card-title">Sign Out</span></div>
+        <div style="padding:24px">
+          <p style="font-size:14px;color:var(--muted);line-height:1.6;margin-bottom:18px">You will be signed out and redirected to the StrathEvents home page.</p>
+          <button onclick="logout()" style="background:#FBE3DD;color:#C0392B;border:none;font-size:14.5px;font-weight:700;padding:12px 24px;border-radius:11px;cursor:pointer">Sign out →</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<nav class="mobile-nav">
+  <button class="mob-nav-btn active" id="mnavDashboard" onclick="goPage('dashboard')"><span>🏠</span>Home</button>
+  <button class="mob-nav-btn" id="mnavEvents" onclick="goPage('events')"><span>📅</span>Events</button>
+  <button class="mob-nav-btn" id="mnavMembers" onclick="goPage('members')"><span>👥</span>Members</button>
+  <button class="mob-nav-btn" id="mnavVerify" onclick="goPage('verify')"><span>🎫</span>Verify</button>
+  <button class="mob-nav-btn" id="mnavSettings" onclick="goPage('settings')"><span>⚙️</span>Settings</button>
+</nav>
+
+<!-- ═══ CREATE/EDIT EVENT MODAL ═══ -->
+<div class="modal-overlay" id="eventModal" style="display:none" onclick="closeEventModal()">
+  <div class="modal-box modal-lg" onclick="event.stopPropagation()">
+    <div class="modal-header"><span class="modal-title" id="evModalTitle">Create Event</span><button class="modal-close" onclick="closeEventModal()">✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="evModalId">
+      <div class="se-field"><label class="se-label">Event poster / banner *</label>
+        <div class="upload-zone" id="evBannerZone" onclick="document.getElementById('evBannerFile').click()">
+          <div id="evBannerPlaceholder">
+            <div style="font-size:28px;margin-bottom:8px">🖼️</div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:4px">Click to upload poster or banner</div>
+            <div style="font-size:12px;color:var(--muted)">Required · JPG or PNG · max 2MB</div>
+          </div>
+          <img id="evBannerPreview" style="display:none;width:100%;max-height:220px;object-fit:contain;border-radius:10px;background:var(--fill2)">
+        </div>
+        <input type="file" id="evBannerFile" accept="image/jpeg,image/png" style="display:none" onchange="previewBanner(event)">
+        <span id="evBannerError" class="se-error" style="display:none">A poster image is required</span>
+      </div>
+      <div class="form-grid2">
+        <div class="se-field"><label class="se-label">Title *</label><input id="evTitle" class="se-input" placeholder="Event name"></div>
+        <div class="se-field"><label class="se-label">Category</label>
+          <select id="evCategory" class="se-select">
+            <option value="">— Select —</option>
+            <option>Music</option><option>Tech</option><option>Business</option><option>Sports</option>
+            <option>Arts</option><option>Career</option><option>Faith</option><option>Language</option><option>Other</option>
+          </select>
+        </div>
+        <div class="se-field"><label class="se-label">Date & time *</label><input id="evDate" class="se-input" type="datetime-local"></div>
+        <div class="se-field"><label class="se-label">End date & time</label><input id="evEndDate" class="se-input" type="datetime-local"></div>
+        <div class="se-field"><label class="se-label">Registration deadline</label><input id="evDeadline" class="se-input" type="datetime-local"><div style="font-size:12px;color:var(--muted);margin-top:4px">Last date students can register. Leave blank for no deadline.</div></div>
+        <div class="se-field"><label class="se-label">Location *</label><input id="evLocation" class="se-input" placeholder="e.g. Main Auditorium"></div>
+        <div class="se-field"><label class="se-label">Max capacity</label><input id="evCapacity" class="se-input" type="number" placeholder="Leave blank for unlimited"></div>
+      </div>
+      <div class="se-field"><label class="se-label">Description</label><textarea id="evDesc" class="se-textarea" placeholder="What is this event about?"></textarea></div>
+      <div class="se-card" style="padding:18px;margin-bottom:16px">
+        <div style="font-weight:700;font-size:14px;margin-bottom:14px">Pricing</div>
+        <div style="display:flex;gap:16px;margin-bottom:14px">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600"><input type="radio" name="evPaid" id="evFree" value="0" checked onchange="togglePricing()"> Free</label>
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600"><input type="radio" name="evPaid" id="evPaid" value="1" onchange="togglePricing()"> Paid</label>
+        </div>
+        <div id="pricingFields" style="display:none" class="form-grid2">
+          <div class="se-field" style="margin-bottom:0"><label class="se-label">Member price (KES)</label><input id="evMemberPrice" class="se-input" type="number" placeholder="e.g. 200"></div>
+          <div class="se-field" style="margin-bottom:0"><label class="se-label">Non-member price (KES)</label><input id="evNonMemberPrice" class="se-input" type="number" placeholder="e.g. 400"></div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeEventModal()">Cancel</button>
+      <button class="btn btn-dark btn-sm" onclick="saveEvent()">Submit for approval</button>
+    </div>
+  </div>
+</div>
+
+<button class="theme-btn" id="themeBtn">☾</button>
+<div class="toast-container" id="toastContainer"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html5-qrcode/2.3.8/html5-qrcode.min.js"></script>
+<script src="../assets/js/se.js"></script>
+<script>
+try {
+let state={page:'dashboard',events:[],members:{pending:[],active:[]},scanner:null};
+let pendingBannerB64=null;
+
+const PAGE_META={
+  dashboard:{title:'Club Dashboard',sub:'How your club is performing.'},
+  events:{title:'My Events',sub:'Events your club has created.'},
+  members:{title:'Members',sub:'Approve join requests and manage your roster.'},
+  verify:{title:'Verify Ticket',sub:'Check students in at the door.'},
+  attendance:{title:'Attendance',sub:'Track who attended your events.'},
+  payments:{title:'Payments',sub:'Track M-Pesa payments and revenue per event.'},
+  settings:{title:'Settings',sub:'Manage your profile and account.'}
+};
+const NAV_ITEMS=['dashboard','events','members','verify','attendance','payments','settings'];
+
+document.addEventListener('DOMContentLoaded',async()=>{
+  try {
+    if(!SE.requireAuth('club_admin')) return;
+    initClubHeader();
+    buildNav();
+    await Promise.all([loadEvents(),loadMembers()]);
+    goPage('dashboard');
+  } catch (e) {
+    console.error('Club portal init failed:', e);
+    document.body.insertAdjacentHTML('afterbegin', `
+      <div style="position:fixed;inset:0;z-index:9999;background:#FBE3DD;display:flex;align-items:center;justify-content:center;padding:30px;font-family:sans-serif">
+        <div style="max-width:560px;background:#fff;border-radius:18px;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+          <div style="font-size:32px;margin-bottom:10px">⚠️</div>
+          <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;color:#C0392B;margin-bottom:10px">Page failed to load</div>
+          <p style="font-size:14px;color:#444;line-height:1.6;margin-bottom:14px">A script error stopped this page from working. Please screenshot the message below and send it back so it can be fixed.</p>
+          <pre style="background:#FFF5F2;border:1px solid #F4C6BB;border-radius:10px;padding:14px;font-size:12.5px;color:#C0392B;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow:auto">${(e && e.stack) ? e.stack : String(e)}</pre>
+          <button onclick="location.reload()" style="margin-top:16px;background:#17150F;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-weight:700;cursor:pointer">Reload page</button>
+        </div>
+      </div>
+    `);
+  }
+});
+
+function initClubHeader(){
+  const u=SE.user(); if(!u) return;
+  const av=document.getElementById('avatarEl');
+  if(u.avatar_base64){ av.innerHTML=`<img src="${u.avatar_base64}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`; av.style.background=''; }
+  else { av.style.background=SE.avatarColor(u.full_name||''); av.textContent=SE.initials(u.full_name||''); }
+  document.getElementById('userInfo').innerHTML=`<div class="se-user-name">${u.full_name||''}</div><div class="se-user-sub">${u.club_name||'Club Admin'}</div>`;
+}
+
+function buildNav(){
+  const labels={dashboard:'Dashboard',events:'My Events',members:'Members',verify:'Verify',attendance:'Attendance',payments:'Payments',settings:'Settings'};
+  document.getElementById('mainNav').innerHTML=NAV_ITEMS.map(k=>`<button class="se-nav-btn${state.page===k?' active':''}" id="nav${k}" onclick="goPage('${k}')">${labels[k]}${k==='members'&&state.members.pending.length?`<span class="se-badge">${state.members.pending.length}</span>`:''}</button>`).join('');
+  document.getElementById('drawerNav').innerHTML=NAV_ITEMS.map(k=>`<button class="mob-drawer-btn${state.page===k?' active':''}" onclick="SE.closeDrawer();goPage('${k}')">${labels[k]}</button>`).join('');
+}
+function goPage(p){
+  state.page=p;
+  document.querySelectorAll('.page-content').forEach(el=>el.style.display='none');
+  document.getElementById('page'+p.charAt(0).toUpperCase()+p.slice(1)).style.display='block';
+  const m=PAGE_META[p]||{title:p,sub:''};
+  document.getElementById('pageTitle').textContent=m.title;
+  document.getElementById('pageSub').textContent=m.sub;
+  document.querySelectorAll('.se-nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('nav'+p)?.classList.add('active');
+  document.querySelectorAll('.mob-nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('mnav'+p.charAt(0).toUpperCase()+p.slice(1))?.classList.add('active');
+  buildNav();
+  if(p==='dashboard') renderDashboard();
+  if(p==='events') renderEvents();
+  if(p==='members') renderMembers();
+  if(p==='attendance') setupAttendance();
+  if(p==='payments') setupClubPayments();
+  if(p==='settings') loadClubSettings();
+  if(p!=='verify') stopScanner();
+}
+
+async function loadEvents(){
+  try{ const d=await SE.fetch('/club/events'); state.events=d.events||d||[]; }catch(e){}
+}
+async function loadMembers(){
+  try{
+    const d=await SE.fetch('/memberships/club');
+    const all=d.memberships||d||[];
+    state.members.pending=all.filter(m=>m.status==='pending');
+    state.members.active=all.filter(m=>m.status==='approved');
+  }catch(e){}
+}
+
+function renderDashboard(){
+  const upcoming=state.events.filter(e=>!SE.isPast(e.event_date));
+  const totalReg=state.events.reduce((s,e)=>s+(e.registration_count||0),0);
+  const stats=[
+    {value:state.events.length+'',label:'Total events',icon:'📅',tint:'#FBE3DD',color:'#FF4D2E'},
+    {value:upcoming.length+'',label:'Upcoming',icon:'🗓️',tint:'#E4ECFD',color:'#2348FF'},
+    {value:totalReg+'',label:'Total registered',icon:'👥',tint:'#FBEFD3',color:'#9a6a0a'},
+    {value:state.members.active.length+'',label:'Members',icon:'⭐',tint:'#E7F6E9',color:'#1B7A3D'}
+  ];
+  document.getElementById('statGrid').innerHTML=stats.map(s=>`<div class="se-stat-card"><div class="se-stat-icon" style="background:${s.tint};color:${s.color}">${s.icon}</div><div class="se-stat-val">${s.value}</div><div class="se-stat-lbl">${s.label}</div></div>`).join('');
+  document.getElementById('dashEventsBody').innerHTML=state.events.length?state.events.slice(0,5).map(e=>{
+    const sm=SE.statusMeta(e.status);
+    return `<tr><td><div style="display:flex;align-items:center;gap:9px"><span style="width:9px;height:9px;border-radius:50%;background:${SE.catColor(e.category||'')};flex-shrink:0"></span><div style="font-weight:700;font-size:14px">${e.title||''}</div></div></td>
+    <td style="font-family:'Space Mono',monospace;font-size:12.5px;color:var(--muted);white-space:nowrap">${SE.fmtDate(e.event_date)}</td>
+    <td><span style="font-family:'Bricolage Grotesque';font-weight:800;font-size:15px">${e.registration_count||0}</span><span style="font-size:12px;color:var(--muted)"> / ${e.capacity||'∞'}</span></td>
+    <td><span class="pill" style="background:${sm.bg};color:${sm.fg}">${sm.label}</span></td></tr>`;
+  }).join('') : `<tr><td colspan="4" style="text-align:center;padding:30px;color:var(--muted)">No events yet.</td></tr>`;
+}
+
+function renderEvents(){
+  const upcoming=state.events.filter(e=>!SE.isPast(e.event_date));
+  const past=state.events.filter(e=>SE.isPast(e.event_date));
+  document.getElementById('upcomingGrid').innerHTML=upcoming.length?upcoming.map(evCard).join(''):'<p style="font-size:13px;color:var(--muted)">No upcoming events.</p>';
+  document.getElementById('pastGrid').innerHTML=past.length?past.map(e=>evCard(e,true)).join(''):'<p style="font-size:13px;color:var(--muted)">No past events yet.</p>';
+}
+function evCard(e,isPast=false){
+  const sm=SE.statusMeta(e.status); const color=SE.catColor(e.category||'');
+  const banner=e.banner_base64||e.banner_url;
+  return `<div class="se-card" style="overflow:hidden;display:flex;flex-direction:column">
+    <div style="height:140px;position:relative;overflow:hidden;background:${color};flex-shrink:0">
+      ${banner?`<img src="${banner}" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center" alt="">
+      <div style="position:absolute;inset:0;background:linear-gradient(to bottom,rgba(0,0,0,.1),rgba(0,0,0,.55))"></div>`:'' }
+      <div style="position:absolute;inset:0;padding:14px 15px;display:flex;flex-direction:column;justify-content:space-between">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <span style="font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:rgba(255,255,255,.9);text-transform:uppercase">${e.category||''}</span>
+          <span class="pill" style="background:rgba(20,18,12,.7);color:#fff;font-size:10px">${sm.label}</span>
+        </div>
+        <div style="font-family:'Bricolage Grotesque';font-weight:800;color:#fff;font-size:19px;line-height:1.08">${e.title||''}</div>
+      </div>
+    </div>
+    <div style="padding:14px 16px;flex:1;display:flex;flex-direction:column;gap:10px;min-height:0">
+      <div style="font-family:'Space Mono',monospace;font-size:12px;color:var(--muted)">${SE.fmtDate(e.event_date)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding-top:11px;flex-wrap:wrap;gap:8px;margin-top:auto">
+        <div><span style="font-family:'Bricolage Grotesque';font-weight:800;font-size:17px">${e.registration_count||0}</span><span style="font-size:12px;color:var(--muted)"> registered</span></div>
+        <div style="display:flex;gap:6px">
+          ${!isPast?`<button class="btn btn-ghost btn-sm" onclick="openEventModal('${e.id}')">Edit</button>`:''}
+          <button class="btn btn-ghost btn-sm" onclick="viewAttendees('${e.id}')">Attendees</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+// ═══ MEMBERS ═══
+function renderMembers(){
+  const pb=document.getElementById('pendingBadge');
+  if(state.members.pending.length){ pb.textContent=state.members.pending.length; pb.style.display='inline'; }
+  else pb.style.display='none';
+  document.getElementById('pendingList').innerHTML=!state.members.pending.length?
+    '<div style="text-align:center;padding:36px 12px;color:var(--muted)"><div style="font-size:32px;margin-bottom:8px">✓</div><div style="font-size:14px">No pending requests</div></div>':
+    state.members.pending.map(m=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:13px 0;border-bottom:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:11px">
+        <div style="width:36px;height:36px;border-radius:50%;background:#2348FF;color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800">${SE.initials(m.users?.full_name||'')}</div>
+        <div><div style="font-weight:700;font-size:13.5px">${m.users?.full_name||''}</div><div style="font-size:11.5px;font-family:'Space Mono',monospace;color:var(--muted)">${m.users?.admission_number||''} · ${m.users?.email||''}</div></div>
+      </div>
+      <div style="display:flex;gap:7px">
+        <button class="btn-success btn-sm" onclick="reviewMember('${m.id}','approved')">Approve</button>
+        <button class="btn-danger btn-sm" onclick="reviewMember('${m.id}','rejected')">✕</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('activeList').innerHTML=!state.members.active.length?
+    '<div style="text-align:center;padding:36px 12px;color:var(--muted);font-size:14px">No members yet</div>':
+    state.members.active.map(m=>`<div style="display:flex;align-items:center;gap:11px;padding:11px 0;border-bottom:1px solid var(--line)">
+      <div style="width:34px;height:34px;border-radius:50%;background:${SE.avatarColor(m.users?.full_name||'')};color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800">${SE.initials(m.users?.full_name||'')}</div>
+      <div style="flex:1"><div style="font-weight:600;font-size:13.5px">${m.users?.full_name||''}</div><div style="font-size:11.5px;font-family:'Space Mono',monospace;color:var(--muted)">${m.users?.admission_number||''}</div></div>
+      <button class="btn-danger btn-sm" style="padding:4px 10px;font-size:11px" onclick="removeMember('${m.id}','${(m.users?.full_name||'').replace(/'/g,"\\'")}')">Remove</button>
+    </div>`).join('');
+}
+async function reviewMember(id, status){
+  try{
+    await SE.fetch('/memberships/'+id+'/review',{method:'PATCH',body:JSON.stringify({status})});
+    SE.toast(status==='approved'?'Member approved':'Request declined', status==='approved'?'success':'info');
+    await loadMembers(); renderMembers(); buildNav();
+  } catch(e){ SE.toast(e.message,'error'); }
+}
+async function removeMember(id, name){
+  if(!confirm(`Remove ${name} from the club?`)) return;
+  try{
+    await SE.fetch('/memberships/'+id,{method:'DELETE'});
+    SE.toast(name+' removed','info');
+    await loadMembers(); renderMembers();
+  } catch(e){ SE.toast(e.message,'error'); }
+}
+
+// ═══ CREATE / EDIT EVENT ═══
+function openEventModal(id){
+  pendingBannerB64=null;
+  ['evTitle','evDesc','evLocation','evCapacity'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('evDate').value='';
+  document.getElementById('evEndDate').value='';
+  document.getElementById('evDeadline').value='';
+  document.getElementById('evCategory').value='';
+  document.getElementById('evBannerPreview').style.display='none';
+  document.getElementById('evBannerPlaceholder').style.display='block';
+  document.getElementById('evBannerZone').classList.remove('error','has-image');
+  document.getElementById('evBannerError').style.display='none';
+  document.getElementById('evFree').checked=true;
+  document.getElementById('pricingFields').style.display='none';
+  document.getElementById('evModalId').value='';
+  if(id){
+    const e=state.events.find(x=>x.id===id);
+    if(e){
+      document.getElementById('evModalTitle').textContent='Edit Event';
+      document.getElementById('evModalId').value=e.id;
+      document.getElementById('evTitle').value=e.title||'';
+      document.getElementById('evDesc').value=e.description||'';
+      document.getElementById('evLocation').value=e.location||'';
+      document.getElementById('evCapacity').value=e.capacity||'';
+      document.getElementById('evCategory').value=e.category||'';
+      if(e.event_date) document.getElementById('evDate').value=new Date(e.event_date).toISOString().slice(0,16);
+      if(e.end_date) document.getElementById('evEndDate').value=new Date(e.end_date).toISOString().slice(0,16);
+      if(e.registration_deadline) document.getElementById('evDeadline').value=new Date(e.registration_deadline).toISOString().slice(0,16);
+      if(e.is_paid){ document.getElementById('evPaid').checked=true; document.getElementById('pricingFields').style.display='grid'; document.getElementById('evMemberPrice').value=e.member_price||''; document.getElementById('evNonMemberPrice').value=e.non_member_price||''; }
+      if(e.banner_base64){ pendingBannerB64=e.banner_base64; const img=document.getElementById('evBannerPreview'); img.src=e.banner_base64; img.style.display='block'; document.getElementById('evBannerPlaceholder').style.display='none'; document.getElementById('evBannerZone').classList.add('has-image'); }
+    }
+  } else { document.getElementById('evModalTitle').textContent='Create Event'; }
+  document.getElementById('eventModal').style.display='flex';
+}
+function closeEventModal(){ document.getElementById('eventModal').style.display='none'; }
+function previewBanner(e){
+  const f=e.target.files[0]; if(!f) return;
+  if(f.size>2*1024*1024){ SE.toast('Image must be under 2MB','error'); return; }
+  const r=new FileReader();
+  r.onload=ev=>{
+    pendingBannerB64=ev.target.result;
+    const img=document.getElementById('evBannerPreview');
+    img.src=ev.target.result; img.style.display='block';
+    document.getElementById('evBannerPlaceholder').style.display='none';
+    document.getElementById('evBannerZone').classList.add('has-image');
+    document.getElementById('evBannerError').style.display='none';
+  };
+  r.readAsDataURL(f);
+}
+function togglePricing(){ document.getElementById('pricingFields').style.display=document.getElementById('evPaid').checked?'grid':'none'; }
+async function saveEvent(){
+  const title=document.getElementById('evTitle').value.trim();
+  const date=document.getElementById('evDate').value;
+  const loc=document.getElementById('evLocation').value.trim();
+  if(!title||!date||!loc){ SE.toast('Title, date and location are required','error'); return; }
+  if(!pendingBannerB64){ document.getElementById('evBannerZone').classList.add('error'); document.getElementById('evBannerError').style.display='block'; SE.toast('Upload a poster image','error'); return; }
+  // Validate deadline is before event date
+  const deadline=document.getElementById('evDeadline').value;
+  if(deadline && date && new Date(deadline) >= new Date(date)){ SE.toast('Registration deadline must be before the event date','error'); return; }
+  const isPaid=document.getElementById('evPaid').checked;
+  const body={title,description:document.getElementById('evDesc').value.trim(),location:loc,event_date:date,end_date:document.getElementById('evEndDate').value||null,registration_deadline:deadline||null,category:document.getElementById('evCategory').value,capacity:document.getElementById('evCapacity').value||null,is_paid:isPaid,banner_base64:pendingBannerB64};
+  if(isPaid){ body.member_price=parseInt(document.getElementById('evMemberPrice').value)||0; body.non_member_price=parseInt(document.getElementById('evNonMemberPrice').value)||0; }
+  const editId=document.getElementById('evModalId').value;
+  try{
+    if(editId){ await SE.fetch('/events/'+editId,{method:'PUT',body:JSON.stringify(body)}); SE.toast('Event updated','success'); }
+    else { await SE.fetch('/events',{method:'POST',body:JSON.stringify(body)}); SE.toast('Event submitted for approval','info'); }
+    closeEventModal(); await loadEvents(); renderEvents();
+  } catch(e){ SE.toast(e.message,'error'); }
+}
+
+function viewAttendees(eventId){ goPage('attendance'); setTimeout(()=>{ document.getElementById('attendEventSelect').value=eventId; loadClubAttendance(); },100); }
+
+// ═══ ATTENDANCE ═══
+function setupAttendance(){
+  const sel=document.getElementById('attendEventSelect');
+  sel.innerHTML='<option value="">— Choose an event —</option>'+state.events.map(e=>`<option value="${e.id}">${e.title||''} · ${SE.fmtDate(e.event_date)}</option>`).join('');
+}
+async function loadClubAttendance(){
+  const id=document.getElementById('attendEventSelect').value; if(!id) return;
+  const el=document.getElementById('attendanceContent');
+  el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Loading…</div>';
+  const ev=state.events.find(e=>e.id===id);
+  const isPast=SE.isPast(ev?.event_date);
+  try{
+    const d=await SE.fetch('/registrations/event/'+id);
+    const regs=d.registrations||d||[];
+    const confirmed=regs.filter(r=>r.status==='confirmed').length;
+    const attended=regs.filter(r=>r.status==='attended').length;
+    el.innerHTML=`
+      <div class="stat-grid-3">
+        <div class="se-stat-card" style="padding:16px"><div style="font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Registered</div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:28px;margin-top:4px">${regs.length}</div></div>
+        <div class="se-stat-card" style="padding:16px"><div style="font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Confirmed</div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:28px;margin-top:4px;color:#1B7A3D">${confirmed}</div></div>
+        <div class="se-stat-card" style="padding:16px"><div style="font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Attended</div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:28px;margin-top:4px;color:#2348FF">${attended}</div></div>
+      </div>
+      <div class="se-card">
+        <div class="se-card-header"><span class="se-card-title">Attendance list</span></div>
+        <div class="card-table-wrap">
+        <table class="card-table"><thead><tr><th>Student</th><th>Ticket code</th><th>Status</th>${!isPast?'<th class="r">Action</th>':''}</tr></thead>
+        <tbody>${regs.length?regs.map(r=>{
+          const sm=SE.statusMeta(isPast&&r.status==='confirmed'?'expired':r.status);
+          const ticket=r.tickets?.[0];
+          return `<tr><td><div style="display:flex;align-items:center;gap:9px">
+            <div style="width:30px;height:30px;border-radius:50%;background:${SE.avatarColor(r.users?.full_name||'')};color:#fff;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0">${SE.initials(r.users?.full_name||'')}</div>
+            <div><div style="font-weight:700;font-size:13.5px">${r.users?.full_name||''}</div><div style="font-size:11px;font-family:'Space Mono',monospace;color:var(--muted)">${r.users?.admission_number||''}</div></div>
+          </div></td>
+          <td style="font-family:'Space Mono',monospace;font-size:12.5px;color:var(--muted);white-space:nowrap">${ticket?.ticket_code||'—'}</td>
+          <td><span class="pill" style="background:${sm.bg};color:${sm.fg}">${sm.label}</span></td>
+          ${!isPast?`<td class="r">${r.status==='confirmed'?`<button class="btn-success btn-sm" onclick="markAttended('${r.id}')">Mark attended</button>`:'<span style="font-size:12px;color:var(--muted)">—</span>'}</td>`:''}
+          </tr>`;
+        }).join(''):`<tr><td colspan="${isPast?3:4}" style="text-align:center;padding:30px;color:var(--muted)">No registrations for this event yet.</td></tr>`}</tbody></table>
+        </div>
+      </div>`;
+  } catch(e){ el.innerHTML='<p class="empty-state">Failed to load.</p>'; }
+}
+async function markAttended(regId){
+  try{ await SE.fetch('/registrations/'+regId+'/attend',{method:'PATCH'}); SE.toast('Marked as attended','success'); loadClubAttendance(); }
+  catch(e){ SE.toast(e.message,'error'); }
+}
+
+// ═══ PAYMENTS ═══
+function setupClubPayments(){
+  const sel=document.getElementById('payEventSelect');
+  const paidEvents=state.events.filter(e=>e.is_paid);
+  sel.innerHTML='<option value="">— Choose a paid event —</option>'+paidEvents.map(e=>`<option value="${e.id}">${e.title||''} · ${SE.fmtDate(e.event_date)}</option>`).join('');
+  if(!paidEvents.length){ document.getElementById('paymentsContent').innerHTML='<p class="empty-state">None of your events are paid yet. Payments will appear here once you create a paid event.</p>'; }
+  else { document.getElementById('paymentsContent').innerHTML=''; }
+}
+async function loadClubPayments(){
+  const id=document.getElementById('payEventSelect').value; if(!id) return;
+  const el=document.getElementById('paymentsContent');
+  el.innerHTML='<div style="padding:20px;text-align:center;color:var(--muted)">Loading…</div>';
+  try{
+    const d=await SE.fetch('/payments/event/'+id);
+    const pays=d.payments||[]; const s=d.summary||{};
+    el.innerHTML=`
+      <div class="stat-grid-4">
+        <div class="se-stat-card" style="padding:16px"><div style="font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Total</div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:24px;margin-top:4px">${s.total||0}</div></div>
+        <div class="se-stat-card" style="padding:16px"><div style="font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Completed</div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:24px;margin-top:4px;color:#1B7A3D">${s.completed||0}</div></div>
+        <div class="se-stat-card" style="padding:16px"><div style="font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Pending</div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:24px;margin-top:4px;color:#9a6a0a">${s.pending||0}</div></div>
+        <div class="se-stat-card" style="padding:16px"><div style="font-size:11px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)">Revenue</div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:24px;margin-top:4px;color:#2348FF">${SE.fmtMoney(s.total_revenue||0)}</div></div>
+      </div>
+      <div class="se-card">
+        <div class="se-card-header"><span class="se-card-title">Payment history</span></div>
+        ${pays.length?`<div class="card-table-wrap"><table class="card-table"><thead><tr><th>Student</th><th>Phone</th><th>Amount</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody>${pays.map(p=>{
+          const sm=p.status==='completed'?{bg:'#E7F6E9',fg:'#1B7A3D',label:'Completed'}:p.status==='pending'?{bg:'#FEF3C7',fg:'#9a6a0a',label:'Pending'}:{bg:'#FBE3DD',fg:'#C0392B',label:'Failed'};
+          return `<tr><td><div style="font-weight:700;font-size:13.5px">${p.users?.full_name||'—'}</div><div style="font-size:11px;font-family:'Space Mono',monospace;color:var(--muted)">${p.users?.admission_number||''}</div></td>
+          <td style="font-family:'Space Mono',monospace;font-size:12.5px;color:var(--muted);white-space:nowrap">${p.phone_number||'—'}</td>
+          <td style="font-weight:700;white-space:nowrap">${SE.fmtMoney(p.amount||0)}</td>
+          <td><span class="pill" style="background:${sm.bg};color:${sm.fg}">${sm.label}</span></td>
+          <td style="font-size:12px;color:var(--muted);white-space:nowrap">${SE.fmtDate(p.created_at)}</td></tr>`;
+        }).join('')}</tbody></table></div>`:'<p class="empty-state" style="padding:30px">No payments recorded yet for this event.</p>'}
+      </div>`;
+  } catch(e){ el.innerHTML='<p class="empty-state">Failed to load payments.</p>'; }
+}
+
+// ═══ TICKET VERIFY ═══
+async function doVerify(){
+  const code=document.getElementById('verifyInput').value.trim();
+  if(!code){ SE.toast('Enter a ticket code','error'); return; }
+  try{
+    const d=await SE.fetch('/registrations/verify-ticket',{method:'POST',body:JSON.stringify({ticket_code:code})});
+    showVerifyResult(d);
+  } catch(e){
+    const msg=e.message||'';
+    if(msg.toLowerCase().includes('expired')||msg.toLowerCase().includes('ended')){ showVerifyResult({status:'expired',message:msg}); }
+    else if(msg.toLowerCase().includes('used')){ showVerifyResult({status:'used'}); }
+    else { showVerifyResult({status:'invalid'}); SE.toast(msg||'No matching ticket','error'); }
+  }
+}
+function showVerifyResult(d){
+  const el=document.getElementById('verifyResult');
+  let html='';
+  if(d.status==='success'||d.ticket?.is_used===false){
+    html=`<div class="verify-result verify-valid"><div style="display:flex;align-items:center;gap:12px;margin-bottom:14px"><div style="width:46px;height:46px;border-radius:50%;background:#E7F6E9;color:#1B7A3D;display:flex;align-items:center;justify-content:center;font-size:24px">✓</div><div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:19px;color:#1B7A3D">Valid — Check in</div><div style="font-size:13px;color:var(--muted)">Ticket verified and marked as attended</div></div></div>${d.registration?`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px"><div><div style="font-size:10px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:3px">Student</div><div style="font-size:14px;font-weight:700">${d.registration.users?.full_name||''}</div></div><div><div style="font-size:10px;font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:3px">Event</div><div style="font-size:14px;font-weight:700">${d.registration.events?.title||''}</div></div></div>`:''}</div>`;
+  } else if(d.status==='used'){
+    html=`<div class="verify-result verify-used"><div style="display:flex;align-items:center;gap:12px"><div style="width:46px;height:46px;border-radius:50%;background:#FEF3C7;color:#9a6a0a;display:flex;align-items:center;justify-content:center;font-size:24px">⚠️</div><div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:19px;color:#9a6a0a">Already used</div><div style="font-size:13px;color:var(--muted)">This ticket was already scanned.</div></div></div></div>`;
+  } else if(d.status==='expired'){
+    html=`<div class="verify-result verify-expired"><div style="display:flex;align-items:center;gap:12px"><div style="width:46px;height:46px;border-radius:50%;background:#FEF2F2;color:#C0392B;display:flex;align-items:center;justify-content:center;font-size:24px">🕐</div><div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:19px;color:#C0392B">Ticket Expired</div><div style="font-size:13px;color:var(--muted)">This event has ended. Entry not permitted.</div></div></div></div>`;
+  } else {
+    html=`<div class="verify-result verify-invalid"><div style="display:flex;align-items:center;gap:12px"><div style="width:46px;height:46px;border-radius:50%;background:#FBE3DD;color:#C0392B;display:flex;align-items:center;justify-content:center;font-size:24px">✕</div><div><div style="font-family:'Bricolage Grotesque';font-weight:800;font-size:19px;color:#C0392B">Invalid ticket</div><div style="font-size:13px;color:var(--muted)">No matching ticket found.</div></div></div></div>`;
+  }
+  el.innerHTML=html; el.style.display='block';
+}
+
+// QR SCANNER
+let html5QrCode=null;
+function toggleScanner(){
+  const sec=document.getElementById('scannerSection');
+  if(sec.style.display==='none'||sec.style.display===''){
+    sec.style.display='block'; startScanner();
+    document.getElementById('scanBtn').textContent='❌ Close camera';
+  } else { stopScanner(); }
+}
+function startScanner(){
+  const container=document.getElementById('scannerContainer');
+  container.innerHTML='<video id="qrVideo" style="width:100%;border-radius:16px;display:block"></video>';
+  if(html5QrCode) html5QrCode.stop().catch(()=>{});
+  html5QrCode=new Html5Qrcode('scannerContainer');
+  html5QrCode.start({facingMode:'environment'},{fps:10,qrbox:{width:200,height:200}},code=>{
+    document.getElementById('verifyInput').value=code;
+    stopScanner();
+    doVerify();
+  },()=>{}).catch(e=>{ container.innerHTML=`<div style="padding:30px;text-align:center;color:#b8b2a4;font-size:13px">Camera not available.<br>Please enter the code manually.</div>`; });
+}
+function stopScanner(){
+  document.getElementById('scannerSection').style.display='none';
+  document.getElementById('scanBtn').textContent='📷 Scan QR code';
+  if(html5QrCode){ html5QrCode.stop().catch(()=>{}); html5QrCode=null; }
+}
+
+// ═══ CLUB SETTINGS ═══
+function loadClubSettings(){
+  const u=SE.user(); if(!u) return;
+  const av=document.getElementById('clubSettingsAvatar');
+  const ov=document.getElementById('clubAvatarOverlay');
+  if(u.avatar_base64){ av.innerHTML=`<img src="${u.avatar_base64}" style="width:100%;height:100%;object-fit:cover">`; av.style.background=''; }
+  else { av.style.background=SE.avatarColor(u.full_name||''); av.textContent=SE.initials(u.full_name||''); }
+  av.parentElement.addEventListener('mouseenter',()=>{ if(ov) ov.style.opacity='1'; });
+  av.parentElement.addEventListener('mouseleave',()=>{ if(ov) ov.style.opacity='0'; });
+  document.getElementById('clubSettingsName').textContent=u.full_name||'—';
+  document.getElementById('clubSettingsEmail').textContent=u.email||'—';
+  ['clubPwCurrent','clubPwNew','clubPwConfirm'].forEach(id=>document.getElementById(id).value='');
+}
+
+async function uploadClubAvatar(e){
+  const file=e.target.files[0]; if(!file) return;
+  if(file.size>1024*1024){ SE.toast('Image must be under 1MB','error'); e.target.value=''; return; }
+  const reader=new FileReader();
+  reader.onload=async ev=>{
+    try{
+      await SE.fetch('/auth/profile-picture',{method:'PUT',body:JSON.stringify({avatar_base64:ev.target.result})});
+      const u=SE.user(); if(u){ u.avatar_base64=ev.target.result; localStorage.setItem('se_user',JSON.stringify(u)); }
+      SE.toast('Profile picture updated!','success');
+      initClubHeader();
+      loadClubSettings();
+    }catch(err){ SE.toast(err.message,'error'); }
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveClubPassword(){
+  const cur=document.getElementById('clubPwCurrent').value;
+  const nw=document.getElementById('clubPwNew').value;
+  const cf=document.getElementById('clubPwConfirm').value;
+  if(!cur||!nw||!cf){ SE.toast('All password fields are required','error'); return; }
+  if(nw!==cf){ SE.toast('New passwords do not match','error'); return; }
+  if(nw.length<8){ SE.toast('Password must be at least 8 characters','error'); return; }
+  try{
+    await SE.fetch('/auth/change-password',{method:'PUT',body:JSON.stringify({current_password:cur,new_password:nw})});
+    SE.toast('Password updated successfully','success');
+    ['clubPwCurrent','clubPwNew','clubPwConfirm'].forEach(id=>document.getElementById(id).value='');
+  }catch(e){ SE.toast(e.message,'error'); }
+}
+
+function logout(){ SE.clearAuth(); window.location.href='/'; }
+
+// Explicitly expose every function referenced by inline onclick/onchange
+// attributes in the HTML — block-scoped function declarations inside this
+// try{} would otherwise be invisible to the browser's global lookup.
+Object.assign(window, {
+  closeEventModal, doVerify, goPage, loadClubAttendance, loadClubPayments,
+  logout, markAttended, openEventModal, previewBanner, removeMember,
+  reviewMember, saveClubPassword, saveEvent, stopScanner, togglePricing,
+  toggleScanner, uploadClubAvatar, viewAttendees
+});
+
+} catch (fatalError) {
+  console.error('Club portal fatal error:', fatalError);
+  document.body.insertAdjacentHTML('afterbegin', `
+    <div style="position:fixed;inset:0;z-index:9999;background:#FBE3DD;display:flex;align-items:center;justify-content:center;padding:30px;font-family:sans-serif">
+      <div style="max-width:560px;background:#fff;border-radius:18px;padding:30px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+        <div style="font-size:32px;margin-bottom:10px">⚠️</div>
+        <div style="font-family:'Bricolage Grotesque',sans-serif;font-weight:800;font-size:22px;color:#C0392B;margin-bottom:10px">Page failed to load</div>
+        <p style="font-size:14px;color:#444;line-height:1.6;margin-bottom:14px">A script error stopped this page from working. Please screenshot the message below and send it back so it can be fixed.</p>
+        <pre style="background:#FFF5F2;border:1px solid #F4C6BB;border-radius:10px;padding:14px;font-size:12.5px;color:#C0392B;white-space:pre-wrap;word-break:break-word;max-height:200px;overflow:auto">${(fatalError && fatalError.stack) ? fatalError.stack : String(fatalError)}</pre>
+        <button onclick="location.reload()" style="margin-top:16px;background:#17150F;color:#fff;border:none;padding:11px 20px;border-radius:10px;font-weight:700;cursor:pointer">Reload page</button>
+      </div>
+    </div>
+  `);
+}
+</script>
+</body>
+</html>
