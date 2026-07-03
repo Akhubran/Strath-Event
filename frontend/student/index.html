@@ -667,10 +667,12 @@ async function openDetail(evId) {
 /* ══════ REGISTER ══════ */
 async function doRegister(evId) {
   const ev = allEvents.find(e=>e.id===evId); if(!ev) return;
-  closeModal('modalDetail');
   try {
     const d = await ajax('POST', '/registrations', { event_id: evId });
+    // Only close the detail modal after a successful registration
+    closeModal('modalDetail');
     myRegs = await loadMyRegs();
+    filterAndRender();
     if (ev.is_paid && d.registration?.id) {
       payRegId = d.registration.id;
       id('payTitle').textContent = ev.title;
@@ -679,9 +681,13 @@ async function doRegister(evId) {
       openModal('modalPay');
     } else {
       toast('Registered! ✓ A confirmation email is on its way.', 'success');
-      filterAndRender();
     }
-  } catch(e) { toast(e.message, 'error'); }
+  } catch(e) {
+    // Refresh registrations so the card shows the correct state
+    myRegs = await loadMyRegs();
+    filterAndRender();
+    toast(e.message, 'error');
+  }
 }
 
 /* ══════ M-PESA ══════ */

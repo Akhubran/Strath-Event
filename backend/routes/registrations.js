@@ -62,11 +62,15 @@ router.post('/', authenticate, requireRole('student'), async (req, res) => {
     if (count >= event.capacity) return res.status(400).json({ error: 'This event is fully booked.' });
   }
 
-  // Duplicate check
+  // Duplicate check — only block if already confirmed or attended.
+  // A 'pending' registration means the student opened the flow but never
+  // completed payment, so treat it the same as cancelled and let them retry.
   const { data: existing } = await supabase.from('registrations')
     .select('id, status').eq('event_id', event_id).eq('user_id', req.user.id).maybeSingle();
-  if (existing && existing.status !== 'cancelled')
+  if (existing && existing.status === 'confirmed')
     return res.status(409).json({ error: 'You are already registered for this event.' });
+  if (existing && existing.status === 'attended')
+    return res.status(409).json({ error: 'You already attended this event.' });
 
   const status = event.is_paid ? 'pending' : 'confirmed';
   let registration;
