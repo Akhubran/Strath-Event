@@ -46,7 +46,6 @@ strathevents_merged/
 │   ├── schema_additions.sql       # Additional tables (tickets, memberships, feedback)
 │   ├── schema_additions_v4.sql    # v4 additions (avatar, club type, FK fixes) — run after
 │   ├── package.json
-│   ├── .env.example               # Template — copy to .env
 │   ├── middleware/
 │   │   └── auth.js                # JWT verify + role enforcement
 │   └── routes/
@@ -77,76 +76,37 @@ strathevents_merged/
 
 ---
 
-## Setup
+## Start
 
-### 1. Clone / unzip the project
-
-```bash
-# If you have the zip file:
-unzip strathevents_v4.zip
-cd strathevents_merged
-```
-
-### 2. Create your Supabase project
-
-1. Go to [supabase.com](https://supabase.com) → **New project**
-2. Choose a name, set a strong database password, pick a region close to Nairobi
-3. Wait for the project to finish provisioning (about 1 minute)
-4. Go to **Settings → API** and note:
-   - **Project URL** (looks like `https://abcdefgh.supabase.co`)
-   - **service_role** key (under "Project API keys" — use this one, NOT the anon key)
-
-### 3. Run the database schema
-
-In your Supabase project, go to **SQL Editor** and run these files **in order**:
-
-1. `backend/supabase_schema.sql` — core tables (users, clubs, events, registrations, tickets, payments, notifications, feedback)
-2. `backend/schema_additions.sql` — additional tables (club_memberships, event_feedback indexes)
-3. `backend/schema_additions_v4.sql` — v4 columns (avatar_base64, club type/category, registration_deadline) and FK fixes
-
-> **Important:** `schema_additions_v4.sql` also contains an `ALTER TABLE payments` fix that allows admin user deletion. Make sure to run it.
-
-### 4. Configure environment variables
-
-```bash
-cd backend
-cp .env.example .env
-```
-
-Open `.env` and fill in all values:
-
-```env
-# ── Supabase ──────────────────────────────────────────────
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_SERVICE_KEY=your-service-role-key
-
-# ── JWT ───────────────────────────────────────────────────
-# Any long random string — generate one at https://generate-secret.vercel.app/64
-JWT_SECRET=your-very-long-random-secret-key-minimum-32-characters
-
-# ── M-Pesa Daraja API ─────────────────────────────────────
-MPESA_CONSUMER_KEY=your-daraja-consumer-key
-MPESA_CONSUMER_SECRET=your-daraja-consumer-secret
-MPESA_SHORTCODE=174379
-MPESA_PASSKEY=bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919
-MPESA_CALLBACK_URL=https://your-domain.com/api/payments/mpesa-callback
-
-# ── Server ────────────────────────────────────────────────
-PORT=3000
-NODE_ENV=development
-```
-
-### 5. Install dependencies and start
+### Run locally
 
 ```bash
 cd backend
 npm install
-npm run dev     # Development — auto-restarts on file changes
+npm run dev
 ```
 
-The server starts at **http://localhost:3000**
+App URLs:
+- `http://localhost:3000/`
+- `http://localhost:3000/login.html`
+- `http://localhost:3000/student/`
+- `http://localhost:3000/admin/`
+- `http://localhost:3000/club/`
 
-To stop it: `Ctrl + C`
+### Deploy
+
+1. Deploy the backend as a Node.js service (for example: Render, Railway, or Fly.io).
+2. Add the required environment variables in your hosting provider.
+3. Point `MPESA_CALLBACK_URL` to your deployed API endpoint:
+      - `https://your-domain.com/api/payments/mpesa-callback`
+4. Redeploy/restart the service and verify health:
+      - `https://your-domain.com/api/health`
+
+For local callback testing, tunnel your local server:
+
+```bash
+ngrok http 3000
+```
 
 ---
 
@@ -208,20 +168,6 @@ MPESA_CALLBACK_URL=https://abc123.ngrok-free.app/api/payments/mpesa-callback
 | `student` | Self-register on the login page (`@strathmore.edu` email required) | Discover events, register, pay, view tickets, join clubs, leave reviews |
 | `club_admin` | Created by a university admin under Users | Create and manage events for their club, verify tickets, view attendance and payments, approve membership requests |
 | `admin` | Seeded in the database or created by another admin | Everything — approve events, manage all users and clubs, view analytics, create events for any club |
-
----
-
-## Creating Your First Admin
-
-After running the schema, no admin account exists by default. You have two options:
-
-**Option A — Create one directly in Supabase:**
-1. Go to Supabase → **Table Editor → users**
-2. Insert a row with `role = admin`, a valid email, and a bcrypt-hashed password
-3. Generate a bcrypt hash at [bcrypt-generator.com](https://bcrypt-generator.com) (use 10 rounds)
-
-**Option B — Temporarily allow admin self-registration:**
-In `backend/routes/auth.js`, change the role check on the `/register` route to allow `admin`, register your account, then revert the change.
 
 ---
 
@@ -333,45 +279,6 @@ Student shows QR at event → club admin scans → "attended"
 | POST | `/` | student | Submit event review + rating |
 | GET | `/event/:id` | — | Reviews for an event |
 | GET | `/my` | student | My submitted reviews |
-
----
-
-## Troubleshooting
-
-**Server won't start — "Missing SUPABASE_URL or SUPABASE_SERVICE_KEY"**
-You haven't created your `.env` file yet. Copy `.env.example` to `.env` and fill in your Supabase credentials.
-
-**"Failed to fetch" on the login page from a phone**
-Your phone is trying to call `localhost` which means the phone itself, not your computer. Make sure you're visiting `http://YOUR-COMPUTER-IP:3000` not `localhost:3000`.
-
-**Login says "Invalid email or password" but the credentials are right**
-The user may not exist in the database yet. Check the Supabase Table Editor → users table to confirm the account is there.
-
-**M-Pesa STK Push sends but payment never confirms**
-The `MPESA_CALLBACK_URL` in your `.env` must be a publicly reachable HTTPS URL. `localhost` URLs don't work because Safaricom's servers can't reach your local machine. Use ngrok.
-
-**Deleting a user fails with a foreign key error**
-Run the migration at the bottom of `schema_additions_v4.sql` in your Supabase SQL editor to fix the `payments.user_id` FK constraint.
-
-**Club admin portal shows wrong events or empty dashboard**
-The club admin account must be assigned to a club. Go to the university admin portal → Clubs → Edit the relevant club → select the admin from the dropdown.
-
----
-
-## Environment Variable Reference
-
-| Variable | Where to get it | Required |
-|---|---|---|
-| `SUPABASE_URL` | Supabase → Settings → API → Project URL | ✅ |
-| `SUPABASE_SERVICE_KEY` | Supabase → Settings → API → service_role key | ✅ |
-| `JWT_SECRET` | Generate any random 32+ character string | ✅ |
-| `MPESA_CONSUMER_KEY` | Safaricom Daraja portal → your app | ✅ for payments |
-| `MPESA_CONSUMER_SECRET` | Safaricom Daraja portal → your app | ✅ for payments |
-| `MPESA_SHORTCODE` | `174379` (sandbox) or your business shortcode | ✅ for payments |
-| `MPESA_PASSKEY` | Safaricom Daraja portal (sandbox passkey in `.env.example`) | ✅ for payments |
-| `MPESA_CALLBACK_URL` | Your public HTTPS URL + `/api/payments/mpesa-callback` | ✅ for payments |
-| `PORT` | Any available port — defaults to `3000` | Optional |
-| `NODE_ENV` | `development` or `production` | Optional |
 
 ---
 
