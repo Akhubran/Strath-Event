@@ -42,9 +42,7 @@ strathevents_merged/
 ├── backend/
 │   ├── server.js                  # Express entry point, static serving, routing
 │   ├── supabaseClient.js          # Supabase service-role client
-│   ├── supabase_schema.sql        # Core database schema — run this first
-│   ├── schema_additions.sql       # Additional tables (tickets, memberships, feedback)
-│   ├── schema_additions_v4.sql    # v4 additions (avatar, club type, FK fixes) — run after
+│   ├── supabase_schema.sql        # Unified database schema (core + additions)
 │   ├── package.json
 │   ├── middleware/
 │   │   └── auth.js                # JWT verify + role enforcement
