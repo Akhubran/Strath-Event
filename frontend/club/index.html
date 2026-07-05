@@ -454,6 +454,12 @@ async function removeMember(id, name){
 }
 
 // ═══ CREATE / EDIT EVENT ═══
+function nowDateTimeLocal() {
+  // Returns current datetime in the format required by datetime-local inputs (YYYY-MM-DDTHH:MM)
+  const now = new Date();
+  now.setSeconds(0, 0);
+  return now.toISOString().slice(0, 16);
+}
 function openEventModal(id){
   pendingBannerB64=null;
   ['evTitle','evDesc','evLocation','evCapacity'].forEach(x=>document.getElementById(x).value='');
@@ -483,8 +489,19 @@ function openEventModal(id){
       if(e.registration_deadline) document.getElementById('evDeadline').value=new Date(e.registration_deadline).toISOString().slice(0,16);
       if(e.is_paid){ document.getElementById('evPaid').checked=true; document.getElementById('pricingFields').style.display='grid'; document.getElementById('evMemberPrice').value=e.member_price||''; document.getElementById('evNonMemberPrice').value=e.non_member_price||''; }
       if(e.banner_base64){ pendingBannerB64=e.banner_base64; const img=document.getElementById('evBannerPreview'); img.src=e.banner_base64; img.style.display='block'; document.getElementById('evBannerPlaceholder').style.display='none'; document.getElementById('evBannerZone').classList.add('has-image'); }
+      // Editing existing event — allow any date (event may already be scheduled)
+      document.getElementById('evDate').removeAttribute('min');
+      document.getElementById('evEndDate').removeAttribute('min');
+      document.getElementById('evDeadline').removeAttribute('min');
     }
-  } else { document.getElementById('evModalTitle').textContent='Create Event'; }
+  } else {
+    document.getElementById('evModalTitle').textContent='Create Event';
+    // New event — block past dates in the picker UI
+    const nowMin = nowDateTimeLocal();
+    document.getElementById('evDate').min = nowMin;
+    document.getElementById('evEndDate').min = nowMin;
+    document.getElementById('evDeadline').min = nowMin;
+  }
   document.getElementById('eventModal').style.display='flex';
 }
 function closeEventModal(){ document.getElementById('eventModal').style.display='none'; }
@@ -509,9 +526,15 @@ async function saveEvent(){
   const loc=document.getElementById('evLocation').value.trim();
   if(!title||!date||!loc){ SE.toast('Title, date and location are required','error'); return; }
   if(!pendingBannerB64){ document.getElementById('evBannerZone').classList.add('error'); document.getElementById('evBannerError').style.display='block'; SE.toast('Upload a poster image','error'); return; }
+  // Validate event date is not in the past (only for new events)
+  const isNewEvent=!document.getElementById('evModalId').value;
+  if(isNewEvent && new Date(date) < new Date()){ SE.toast('Event date cannot be in the past','error'); return; }
   // Validate deadline is before event date
   const deadline=document.getElementById('evDeadline').value;
   if(deadline && date && new Date(deadline) >= new Date(date)){ SE.toast('Registration deadline must be before the event date','error'); return; }
+  // Validate end date is after event date
+  const endDate=document.getElementById('evEndDate').value;
+  if(endDate && date && new Date(endDate) <= new Date(date)){ SE.toast('End date must be after the event start date','error'); return; }
   const isPaid=document.getElementById('evPaid').checked;
   const body={title,description:document.getElementById('evDesc').value.trim(),location:loc,event_date:date,end_date:document.getElementById('evEndDate').value||null,registration_deadline:deadline||null,category:document.getElementById('evCategory').value,capacity:document.getElementById('evCapacity').value||null,is_paid:isPaid,banner_base64:pendingBannerB64};
   if(isPaid){ body.member_price=parseInt(document.getElementById('evMemberPrice').value)||0; body.non_member_price=parseInt(document.getElementById('evNonMemberPrice').value)||0; }
