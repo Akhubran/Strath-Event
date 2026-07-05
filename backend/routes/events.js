@@ -63,6 +63,10 @@ router.post('/', authenticate, requireRole('club_admin', 'admin'), async (req, r
   if (!banner_base64 && !banner_url)
     return res.status(400).json({ error: 'An event poster/banner image is required.' });
 
+  // Prevent creating events with a past date
+  if (new Date(event_date) < new Date())
+    return res.status(400).json({ error: 'Event date cannot be in the past.' });
+
   if (banner_base64 && banner_base64.length > 2800000)
     return res.status(400).json({ error: 'Image too large. Please use an image under 2MB.' });
 
