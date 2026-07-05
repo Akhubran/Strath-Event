@@ -584,6 +584,10 @@ function populateAdminEventClubSelect(){
     .concat((state.clubs||[]).map(c=>`<option value="${c.id}">${c.name}</option>`));
   sel.innerHTML=opts.join('');
 }
+function nowDateTimeLocal(){
+  const now=new Date(); now.setSeconds(0,0);
+  return now.toISOString().slice(0,16);
+}
 function openAdminEventModal(id){
   populateAdminEventClubSelect();
   pendingAdminBannerB64=null;
@@ -616,8 +620,19 @@ function openAdminEventModal(id){
       if(e.registration_deadline) document.getElementById('aEvDeadline').value=new Date(e.registration_deadline).toISOString().slice(0,16);
       if(e.is_paid){ document.getElementById('aEvPaid').checked=true; document.getElementById('aPricingFields').style.display='grid'; document.getElementById('aEvMemberPrice').value=e.member_price||''; document.getElementById('aEvNonMemberPrice').value=e.non_member_price||''; }
       if(e.banner_base64){ pendingAdminBannerB64=e.banner_base64; const img=document.getElementById('aEvBannerPreview'); img.src=e.banner_base64; img.style.display='block'; document.getElementById('aEvBannerPlaceholder').style.display='none'; document.getElementById('aEvBannerZone').classList.add('has-image'); }
+      // Editing — allow any date (event may already be scheduled)
+      document.getElementById('aEvDate').removeAttribute('min');
+      document.getElementById('aEvEndDate').removeAttribute('min');
+      document.getElementById('aEvDeadline').removeAttribute('min');
     }
-  } else { document.getElementById('aEvModalTitle').textContent='Create Event'; }
+  } else {
+    document.getElementById('aEvModalTitle').textContent='Create Event';
+    // New event — block past dates in the picker UI
+    const nowMin=nowDateTimeLocal();
+    document.getElementById('aEvDate').min=nowMin;
+    document.getElementById('aEvEndDate').min=nowMin;
+    document.getElementById('aEvDeadline').min=nowMin;
+  }
   document.getElementById('adminEventModal').style.display='flex';
 }
 function closeAdminEventModal(){ document.getElementById('adminEventModal').style.display='none'; }
@@ -642,8 +657,14 @@ async function saveAdminEvent(){
   const loc=document.getElementById('aEvLocation').value.trim();
   if(!title||!date||!loc){ SE.toast('Title, date and location are required','error'); return; }
   if(!pendingAdminBannerB64){ document.getElementById('aEvBannerZone').classList.add('error'); document.getElementById('aEvBannerError').style.display='block'; SE.toast('Upload a poster image','error'); return; }
+  // Validate event date is not in the past (only for new events)
+  const isNewEvent=!document.getElementById('aEvModalId').value;
+  if(isNewEvent && new Date(date) < new Date()){ SE.toast('Event date cannot be in the past','error'); return; }
   const deadline=document.getElementById('aEvDeadline').value;
   if(deadline && date && new Date(deadline) >= new Date(date)){ SE.toast('Registration deadline must be before the event date','error'); return; }
+  // Validate end date is after event date
+  const endDate=document.getElementById('aEvEndDate').value;
+  if(endDate && date && new Date(endDate) <= new Date(date)){ SE.toast('End date must be after the event start date','error'); return; }
   const isPaid=document.getElementById('aEvPaid').checked;
   const body={
     title, description:document.getElementById('aEvDesc').value.trim(),
