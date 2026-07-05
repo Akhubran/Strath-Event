@@ -1,0 +1,5 @@
+# Sensitive environment files
+.env
+.env.*
+**/.env
+**/.env.*
